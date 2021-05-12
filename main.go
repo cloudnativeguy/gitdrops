@@ -1,35 +1,51 @@
 package main
 
 import (
-	"io/ioutil"
+	"context"
+	"github.com/digitalocean/godo"
 	"log"
-	"net/http"
 	"os"
 )
 
 func main() {
-	url := "https://api.digitalocean.com/v2/droplets"
-
-	// Create a Bearer string by appending string access token
-	var bearer = "Bearer " + os.Getenv("DIGITALOCEAN_TOKEN")
-
-	// Create a new request using http
-	req, err := http.NewRequest("GET", url, nil)
-
-	// add authorization header to the req
-	req.Header.Add("Authorization", bearer)
-
-	// Send req using http Client
-	client := &http.Client{}
-	resp, err := client.Do(req)
+	ctx := context.TODO()
+	client := godo.NewFromToken(os.Getenv("DIGITALOCEAN_TOKEN"))
+	droplets, err := DropletList(ctx, client)
 	if err != nil {
-		log.Println("Error on response.\n[ERROR] -", err)
+		log.Println("Error while listing droplets", err)
 	}
-	defer resp.Body.Close()
+	log.Println(droplets)
 
-	body, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		log.Println("Error while reading the response bytes:", err)
+}
+
+func DropletList(ctx context.Context, client *godo.Client) ([]godo.Droplet, error) {
+	// create a list to hold our droplets
+	list := []godo.Droplet{}
+
+	// create options. initially, these will be blank
+	opt := &godo.ListOptions{}
+	for {
+		droplets, resp, err := client.Droplets.List(ctx, opt)
+		if err != nil {
+			return nil, err
+		}
+
+		// append the current page's droplets to our list
+		list = append(list, droplets...)
+
+		// if we are at the last page, break out the for loop
+		if resp.Links == nil || resp.Links.IsLastPage() {
+			break
+		}
+
+		page, err := resp.Links.CurrentPage()
+		if err != nil {
+			return nil, err
+		}
+
+		// set the page we want for the next request
+		opt.Page = page + 1
 	}
-	log.Println(string([]byte(body)))
+
+	return list, nil
 }
