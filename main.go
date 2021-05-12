@@ -11,7 +11,7 @@ func main() {
 	url := "https://api.digitalocean.com/v2/droplets"
 
 	// Create a Bearer string by appending string access token
-	var bearer = "Bearer " + os.Getenv("DO_TOKEN")
+	var bearer = "Bearer " + os.Getenv("DIGITALOCEAN_TOKEN")
 
 	// Create a new request using http
 	req, err := http.NewRequest("GET", url, nil)
