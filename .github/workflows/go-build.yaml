@@ -1,0 +1,22 @@
+name: Go Run 
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    env:
+            DIGITALOCEAN_TOKEN: ${{ secrets.DIGITALOCEAN_TOKEN }}
+    steps:
+    - uses: actions/checkout@v2
+    - name: Set up Go
+      uses: actions/setup-go@v2
+      with:
+        go-version: 1.13
+    
+    - name: Run Code
+      run: go run main.go
