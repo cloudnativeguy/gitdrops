@@ -15,19 +15,19 @@ const (
 // LocalDropletCreateRequest is a simplified representation of godo.DropletCreateRequest.
 // It is only a single level deep to enable unmarshalling from gitdrops.yaml.
 type LocalDropletCreateRequest struct {
-	Name              string   `json:"name"`
-	Region            string   `json:"region"`
-	Size              string   `json:"size"`
-	Image             string   `json:"image"`
-	SSHKeys           []string `json:"ssh_keys"`
-	Backups           bool     `json:"backups"`
-	IPv6              bool     `json:"ipv6"`
-	PrivateNetworking bool     `json:"private_networking"`
-	Monitoring        bool     `json:"monitoring"`
-	UserData          string   `json:"user_data,omitempty"`
-	Volumes           []string `json:"volumes,omitempty"`
-	Tags              []string `json:"tags"`
-	VPCUUID           string   `json:"vpc_uuid,omitempty"`
+	Name              string   `yaml:"name"`
+	Region            string   `yaml:"region"`
+	Size              string   `yaml:"size"`
+	Image             string   `yaml:"image"`
+	SSHKeyFingerprint string   `yaml:"sshKeyFingerprint"`
+	Backups           bool     `yaml:"backups"`
+	IPv6              bool     `yaml:"ipv6"`
+	PrivateNetworking bool     `yaml:"privateNetworking"`
+	Monitoring        bool     `yaml:"monitoring"`
+	UserData          string   `yaml:"userData,omitempty"`
+	Volumes           []string `yaml:"volumes,omitempty"`
+	Tags              []string `yaml:"tags"`
+	VPCUUID           string   `yaml:"vpcuuid,omitempty"`
 }
 
 // ReadLocalDropletCreateRequests reads and unmarshals from gitops.yaml
