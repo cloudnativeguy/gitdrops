@@ -3,9 +3,10 @@ package reconcile
 import (
 	"context"
 	"errors"
-	"github.com/nolancon/gitdrops/pkg/dolocal"
 	"log"
 	"os"
+
+	"github.com/nolancon/gitdrops/pkg/dolocal"
 
 	"github.com/digitalocean/godo"
 )
@@ -28,13 +29,8 @@ func NewReconcileDroplets(ctx context.Context) (ReconcileDroplets, error) {
 		log.Println(err)
 		return ReconcileDroplets{}, err
 	}
-	if len(localDropletCreateRequests) == 0 {
-		log.Println("no droplet create requests found in gitdrops file")
-		return ReconcileDroplets{}, nil
-		///TODO: handle this to abort before reconcile
-	}
 
-	log.Println("GitDrops:", localDropletCreateRequests)
+	log.Println("gitdrops droplet create requests:", localDropletCreateRequests)
 
 	client := godo.NewFromToken(os.Getenv(digitaloceanToken))
 	activeDroplets, err := dolocal.ListDroplets(ctx, client)
@@ -42,7 +38,7 @@ func NewReconcileDroplets(ctx context.Context) (ReconcileDroplets, error) {
 		log.Println("Error while listing droplets", err)
 		return ReconcileDroplets{}, err
 	}
-	log.Println(activeDroplets)
+	log.Println("active droplets on DO:", activeDroplets)
 
 	return ReconcileDroplets{
 		client:                     client,
@@ -53,10 +49,10 @@ func NewReconcileDroplets(ctx context.Context) (ReconcileDroplets, error) {
 
 func (rd *ReconcileDroplets) Reconcile(ctx context.Context) error {
 	dropletsToUpdate, dropletsToCreate := rd.dropletsToUpdateCreate()
-	log.Println("droplets to update", dropletsToUpdate)
-	log.Println("droplets to create ", dropletsToCreate)
+	log.Println("active droplets to update", dropletsToUpdate)
+	log.Println("active droplets to create ", dropletsToCreate)
 	dropletsToDelete := rd.activeDropletsToDelete()
-	log.Println("droplets to delete ", dropletsToDelete)
+	log.Println("active droplets to delete ", dropletsToDelete)
 
 	dropletsToDelete = append(dropletsToDelete, dropletsToUpdate...)
 	err := rd.deleteDroplets(ctx, dropletsToDelete)
@@ -70,37 +66,6 @@ func (rd *ReconcileDroplets) Reconcile(ctx context.Context) error {
 		return err
 	}
 
-	return nil
-}
-
-func (rd *ReconcileDroplets) deleteDroplets(ctx context.Context, dropletsToDelete []int) error {
-	for _, id := range dropletsToDelete {
-		response, err := rd.client.Droplets.Delete(ctx, id)
-		if err != nil {
-			log.Println("error during delete request for droplet ", id, " error: ", err)
-			return err
-		}
-		log.Println("delete request for droplet ", id, " returned: ", response.StatusCode)
-	}
-	return nil
-}
-
-func (rd *ReconcileDroplets) createDroplets(ctx context.Context, dropletsToCreate []dolocal.LocalDropletCreateRequest) error {
-	for _, dropletToCreate := range dropletsToCreate {
-		dropletCreateRequest, err := translateDropletCreateRequest(dropletToCreate)
-		if err != nil {
-			log.Println("error convering gitdrops.yaml to droplet create request:")
-			return err
-		}
-		log.Println("dropletCreateRequest", dropletCreateRequest)
-		_, response, err := rd.client.Droplets.Create(ctx, dropletCreateRequest)
-		log.Println("create request for ", dropletToCreate.Name, "returned ", response.Status)
-		if err != nil {
-			log.Println("error creating droplet ", dropletToCreate.Name)
-			return err
-		}
-
-	}
 	return nil
 }
 
@@ -214,14 +179,47 @@ func (rd *ReconcileDroplets) activeDropletsToDelete() []int {
 // dropletNeedsUpdate compares a droplet defined in gitdrops.yaml with the same doplet active on DO.
 // If there is a difference in Region, Size or Image, the droplet needs an update.
 func dropletNeedsUpdate(localDropletCreateRequest dolocal.LocalDropletCreateRequest, activeDroplet godo.Droplet) bool {
-	if activeDroplet.Region != nil && activeDroplet.Region.Name != localDropletCreateRequest.Region {
+	if activeDroplet.Region != nil && activeDroplet.Region.Slug != localDropletCreateRequest.Region {
+		log.Println("droplet (name)", activeDroplet.Name, " (ID)", activeDroplet.ID, " region has been updated in gitdrops.yaml")
 		return true
 	}
-	if activeDroplet.Size != nil && activeDroplet.Size.String() != localDropletCreateRequest.Size {
+	if activeDroplet.Size != nil && activeDroplet.Size.Slug != localDropletCreateRequest.Size {
+		log.Println("droplet (name)", activeDroplet.Name, " (ID)", activeDroplet.ID, " size has been updated in gitdrops.yaml")
+
 		return true
 	}
-	if activeDroplet.Image != nil && activeDroplet.Image.String() != localDropletCreateRequest.Image {
+	if activeDroplet.Image != nil && activeDroplet.Image.Slug != localDropletCreateRequest.Image {
+		log.Println("droplet (name)", activeDroplet.Name, " (ID)", activeDroplet.ID, " image  has been updated in gitdrops.yaml")
 		return true
 	}
 	return false
+}
+
+func (rd *ReconcileDroplets) deleteDroplets(ctx context.Context, dropletsToDelete []int) error {
+	for _, id := range dropletsToDelete {
+		err := dolocal.DeleteDroplet(ctx, rd.client, id)
+		if err != nil {
+			log.Println("error during delete request for droplet ", id, " error: ", err)
+			return err
+		}
+	}
+	return nil
+}
+
+func (rd *ReconcileDroplets) createDroplets(ctx context.Context, dropletsToCreate []dolocal.LocalDropletCreateRequest) error {
+	for _, dropletToCreate := range dropletsToCreate {
+		dropletCreateRequest, err := translateDropletCreateRequest(dropletToCreate)
+		if err != nil {
+			log.Println("error convering gitdrops.yaml to droplet create request:")
+			return err
+		}
+		log.Println("dropletCreateRequest", dropletCreateRequest)
+		err = dolocal.CreateDroplet(ctx, rd.client, dropletCreateRequest)
+		if err != nil {
+			log.Println("error creating droplet ", dropletToCreate.Name)
+			return err
+		}
+
+	}
+	return nil
 }

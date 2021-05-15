@@ -2,15 +2,16 @@ package main
 
 import (
 	"context"
+	"time"
+
 	"github.com/nolancon/gitdrops/pkg/dolocal"
 	"github.com/nolancon/gitdrops/pkg/reconcile"
-	"time"
 
 	"github.com/digitalocean/godo"
 )
 
 const (
-	shortDuration    = 3 * time.Second
+	shortDuration    = 10 * time.Second
 	gitdropsYamlPath = "./gitdrops.yaml"
 )
 

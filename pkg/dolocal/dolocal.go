@@ -2,14 +2,18 @@ package dolocal
 
 import (
 	"context"
-	"github.com/digitalocean/godo"
+	"errors"
 	"io/ioutil"
+	"log"
+
+	"github.com/digitalocean/godo"
 
 	"gopkg.in/yaml.v2"
 )
 
 const (
 	gitdropsYamlPath = "./gitdrops.yaml"
+	retries          = 10
 )
 
 // LocalDropletCreateRequest is a simplified representation of godo.DropletCreateRequest.
@@ -54,11 +58,20 @@ func ListDroplets(ctx context.Context, client *godo.Client) ([]godo.Droplet, err
 	// create options. initially, these will be blank
 	opt := &godo.ListOptions{}
 	for {
-		droplets, resp, err := client.Droplets.List(ctx, opt)
-		if err != nil {
-			return nil, err
+		droplets := []godo.Droplet{}
+		resp := &godo.Response{}
+		err := errors.New("")
+		for i := 0; i < retries; i++ {
+			droplets, resp, err = client.Droplets.List(ctx, opt)
+			if err != nil {
+				log.Println("error listing droplets", err)
+				if i == retries-1 {
+					return list, err
+				}
+			} else {
+				break
+			}
 		}
-
 		// append the current page's droplets to our list
 		list = append(list, droplets...)
 
@@ -77,4 +90,36 @@ func ListDroplets(ctx context.Context, client *godo.Client) ([]godo.Droplet, err
 	}
 
 	return list, nil
+}
+
+func DeleteDroplet(ctx context.Context, client *godo.Client, id int) error {
+	for i := 0; i < retries; i++ {
+		response, err := client.Droplets.Delete(ctx, id)
+		if err != nil {
+			log.Println("error during delete request for droplet ", id, " error: ", err)
+			if i == retries-1 {
+				return err
+			}
+		} else {
+			log.Println("delete request for droplet ", id, " returned: ", response.StatusCode)
+			break
+		}
+	}
+	return nil
+}
+
+func CreateDroplet(ctx context.Context, client *godo.Client, dropletCreateRequest *godo.DropletCreateRequest) error {
+	for i := 0; i < retries; i++ {
+		_, response, err := client.Droplets.Create(ctx, dropletCreateRequest)
+		if err != nil {
+			log.Println("error creating droplet ", dropletCreateRequest.Name)
+			if i == retries-1 {
+				return err
+			}
+		} else {
+			log.Println("create request for ", dropletCreateRequest.Name, "returned ", response.Status)
+			break
+		}
+	}
+	return nil
 }
