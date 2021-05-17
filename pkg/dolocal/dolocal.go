@@ -3,20 +3,26 @@ package dolocal
 import (
 	"context"
 	"errors"
+	"fmt"
+	"github.com/digitalocean/godo"
 	"io/ioutil"
 	"log"
-
-	"github.com/digitalocean/godo"
 
 	"gopkg.in/yaml.v2"
 )
 
 const (
-	gitdropsYamlPath = "./gitdrops.yaml"
-	retries          = 10
-	resize           = "resize"
-	rebuild          = "rebuild"
+	gitdropsYamlPath   = "./gitdrops.yaml"
+	userDataPathPrefix = "./userdata-"
+	retries            = 10
+	resize             = "resize"
+	rebuild            = "rebuild"
 )
+
+type UserData struct {
+	ReadFromFile bool   `yaml:"readFromFile,omitempty"`
+	Data         string `yaml:"data,omitempty"`
+}
 
 // LocalDropletCreateRequest is a simplified representation of godo.DropletCreateRequest.
 // It is only a single level deep to enable unmarshalling from gitdrops.yaml.
@@ -28,9 +34,8 @@ type LocalDropletCreateRequest struct {
 	SSHKeyFingerprint string   `yaml:"sshKeyFingerprint"`
 	Backups           bool     `yaml:"backups"`
 	IPv6              bool     `yaml:"ipv6"`
-	PrivateNetworking bool     `yaml:"privateNetworking"`
 	Monitoring        bool     `yaml:"monitoring"`
-	UserData          string   `yaml:"userData,omitempty"`
+	UserData          UserData `yaml:"userData,omitempty"`
 	Volumes           []string `yaml:"volumes,omitempty"`
 	Tags              []string `yaml:"tags"`
 	VPCUUID           string   `yaml:"vpcuuid,omitempty"`
@@ -48,7 +53,18 @@ func ReadLocalDropletCreateRequests() ([]LocalDropletCreateRequest, error) {
 	if err != nil {
 		return nil, err
 	}
-
+	for i, localDropletCreateRequest := range localDropletCreateRequests {
+		if !localDropletCreateRequest.UserData.ReadFromFile {
+			continue
+		}
+		userDataFile := fmt.Sprintf("%s%s", userDataPathPrefix, localDropletCreateRequest.Name)
+		userData, err := ioutil.ReadFile(userDataFile)
+		if err != nil {
+			return nil, err
+		}
+		localDropletCreateRequests[i].UserData.Data = string(userData)
+	}
+	log.Println("created:", localDropletCreateRequests)
 	return localDropletCreateRequests, nil
 }
 

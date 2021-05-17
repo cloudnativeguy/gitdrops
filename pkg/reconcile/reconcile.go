@@ -76,7 +76,7 @@ func (rd *ReconcileDroplets) Reconcile(ctx context.Context) error {
 	}
 	err = rd.updateDroplets(ctx, dropletsToUpdate)
 	if err != nil {
-		log.Println("error creating droplet")
+		log.Println("error updating droplet")
 		return err
 	}
 
@@ -129,7 +129,9 @@ func translateDropletCreateRequest(localDropletCreateRequest dolocal.LocalDrople
 	if localDropletCreateRequest.VPCUUID != "" {
 		createRequest.VPCUUID = localDropletCreateRequest.VPCUUID
 	}
-
+	if localDropletCreateRequest.UserData.Data != "" {
+		createRequest.UserData = localDropletCreateRequest.UserData.Data
+	}
 	return createRequest, nil
 
 }
