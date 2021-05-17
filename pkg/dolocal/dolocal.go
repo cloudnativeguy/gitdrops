@@ -3,7 +3,6 @@ package dolocal
 import (
 	"context"
 	"errors"
-	"fmt"
 	"github.com/digitalocean/godo"
 	"io/ioutil"
 	"log"
@@ -20,8 +19,8 @@ const (
 )
 
 type UserData struct {
-	ReadFromFile bool   `yaml:"readFromFile,omitempty"`
-	Data         string `yaml:"data,omitempty"`
+	Path string `yaml:"path,omitempty"`
+	Data string `yaml:"data,omitempty"`
 }
 
 // LocalDropletCreateRequest is a simplified representation of godo.DropletCreateRequest.
@@ -54,11 +53,10 @@ func ReadLocalDropletCreateRequests() ([]LocalDropletCreateRequest, error) {
 		return nil, err
 	}
 	for i, localDropletCreateRequest := range localDropletCreateRequests {
-		if !localDropletCreateRequest.UserData.ReadFromFile {
+		if localDropletCreateRequest.UserData.Path == "" {
 			continue
 		}
-		userDataFile := fmt.Sprintf("%s%s", userDataPathPrefix, localDropletCreateRequest.Name)
-		userData, err := ioutil.ReadFile(userDataFile)
+		userData, err := ioutil.ReadFile(localDropletCreateRequest.UserData.Path)
 		if err != nil {
 			return nil, err
 		}

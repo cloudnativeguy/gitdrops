@@ -47,7 +47,8 @@ func NewReconcileDroplets(ctx context.Context) (ReconcileDroplets, error) {
 		log.Println("Error while listing droplets", err)
 		return ReconcileDroplets{}, err
 	}
-	log.Println("active droplets on DO:", activeDroplets)
+
+	log.Println("active droplets on DO:", len(activeDroplets))
 
 	return ReconcileDroplets{
 		client:                     client,
