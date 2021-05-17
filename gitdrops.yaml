@@ -1,6 +1,6 @@
 - name: droplet-1
   region: nyc3
-  size: s-1vcpu-1gb
+  size: s-1vcpu-2gb
   image: centos-8-x64 
   backups: false
   ipv6: false
