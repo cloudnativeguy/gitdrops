@@ -22,7 +22,7 @@ func TestDropletsToUpdateCreate(t *testing.T) {
 		name                       string
 		activeDroplets             []godo.Droplet
 		localDropletCreateRequests []dolocal.LocalDropletCreateRequest
-		dropletsToUpdate           []int
+		dropletsToUpdate           dropletActionsByID
 		dropletsToCreate           []dolocal.LocalDropletCreateRequest
 	}{
 		{
@@ -52,7 +52,7 @@ func TestDropletsToUpdateCreate(t *testing.T) {
 					Name: "droplet-5",
 				},
 			},
-			dropletsToUpdate: []int{},
+			dropletsToUpdate: make(dropletActionsByID),
 			dropletsToCreate: []dolocal.LocalDropletCreateRequest{
 				dolocal.LocalDropletCreateRequest{
 					Name: "droplet-4",
@@ -89,7 +89,7 @@ func TestDropletsToUpdateCreate(t *testing.T) {
 					Name: "droplet-3",
 				},
 			},
-			dropletsToUpdate: []int{},
+			dropletsToUpdate: make(dropletActionsByID),
 			dropletsToCreate: []dolocal.LocalDropletCreateRequest{},
 		},
 		{
@@ -106,7 +106,7 @@ func TestDropletsToUpdateCreate(t *testing.T) {
 					Name: "droplet-3",
 				},
 			},
-			dropletsToUpdate: []int{},
+			dropletsToUpdate: make(dropletActionsByID),
 			dropletsToCreate: []dolocal.LocalDropletCreateRequest{
 				dolocal.LocalDropletCreateRequest{
 					Name: "droplet-1",
@@ -125,13 +125,19 @@ func TestDropletsToUpdateCreate(t *testing.T) {
 				godo.Droplet{
 					ID:   1,
 					Name: "droplet-1",
-					Region: &godo.Region{
-						Name: "london",
+					Image: &godo.Image{
+						Slug: "centos-8-x64",
 					},
 				},
 				godo.Droplet{
 					ID:   2,
 					Name: "droplet-2",
+					Image: &godo.Image{
+						Slug: "centos-8-x64",
+					},
+					Size: &godo.Size{
+						Slug: "s-1vcpu-1gb",
+					},
 				},
 				godo.Droplet{
 					ID:   3,
@@ -141,23 +147,37 @@ func TestDropletsToUpdateCreate(t *testing.T) {
 
 			localDropletCreateRequests: []dolocal.LocalDropletCreateRequest{
 				dolocal.LocalDropletCreateRequest{
-					Name:   "droplet-1",
-					Region: "nyc3",
+					Name:  "droplet-1",
+					Image: "ubuntu-16-04-x64",
 				},
 				dolocal.LocalDropletCreateRequest{
-					Name: "droplet-2",
+					Name:  "droplet-2",
+					Image: "ubuntu-16-04-x64",
+					Size:  "s-1vcpu-2gb",
 				},
 				dolocal.LocalDropletCreateRequest{
 					Name: "droplet-4",
 				},
 			},
-			dropletsToUpdate: []int{1},
-			dropletsToCreate: []dolocal.LocalDropletCreateRequest{
-				dolocal.LocalDropletCreateRequest{
-					Name:   "droplet-1",
-					Region: "nyc3",
+			dropletsToUpdate: dropletActionsByID{
+				1: []dropletAction{
+					{
+						action: "rebuild",
+						value:  "ubuntu-16-04-x64",
+					},
 				},
-
+				2: []dropletAction{
+					{
+						action: "resize",
+						value:  "s-1vcpu-2gb",
+					},
+					{
+						action: "rebuild",
+						value:  "ubuntu-16-04-x64",
+					},
+				},
+			},
+			dropletsToCreate: []dolocal.LocalDropletCreateRequest{
 				dolocal.LocalDropletCreateRequest{
 					Name: "droplet-4",
 				},

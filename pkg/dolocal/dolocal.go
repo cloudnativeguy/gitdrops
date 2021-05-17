@@ -14,6 +14,8 @@ import (
 const (
 	gitdropsYamlPath = "./gitdrops.yaml"
 	retries          = 10
+	resize           = "resize"
+	rebuild          = "rebuild"
 )
 
 // LocalDropletCreateRequest is a simplified representation of godo.DropletCreateRequest.
@@ -120,6 +122,38 @@ func CreateDroplet(ctx context.Context, client *godo.Client, dropletCreateReques
 			log.Println("create request for ", dropletCreateRequest.Name, "returned ", response.Status)
 			break
 		}
+	}
+	return nil
+}
+
+func UpdateDroplet(ctx context.Context, client *godo.Client, id int, action, value string) error {
+	for i := 0; i < retries; i++ {
+		switch action {
+		case resize:
+			_, response, err := client.DropletActions.Resize(ctx, id, value, true)
+			if err != nil {
+				log.Println("error resizing droplet ", id)
+				if i == retries-1 {
+					return err
+				}
+			} else {
+				log.Println("create request for ", id, "returned ", response.Status)
+				break
+			}
+
+		case rebuild:
+			_, response, err := client.DropletActions.RebuildByImageSlug(ctx, id, value)
+			if err != nil {
+				log.Println("error resizing droplet ", id)
+				if i == retries-1 {
+					return err
+				}
+			} else {
+				log.Println("create request for ", id, "returned ", response.Status)
+				break
+			}
+		}
+
 	}
 	return nil
 }
