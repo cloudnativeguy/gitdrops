@@ -1,10 +1,9 @@
-#!/bin/bash
+#cloud-config
 
-echo "configuring go dev env"
-sudo yum install git
-mkdir /root/git-tmp
-cd /root/git-tmp
-git clone https://github.com/nolancon/go-dev-env
-cd go-dev-env
-make local
-cd /root/
+runcmd:
+  - [yum, install, git]
+  - [mkdir, /root/git-tmp] 
+  - [cd, /root/git-tmp]
+  - [git, clone, https://github.com/nolancon/go-dev-env]
+  - [cd, go-dev-env]
+  - [make, local]

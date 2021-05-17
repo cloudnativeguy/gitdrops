@@ -59,7 +59,7 @@ func NewReconcileDroplets(ctx context.Context) (ReconcileDroplets, error) {
 func (rd *ReconcileDroplets) Reconcile(ctx context.Context) error {
 	dropletsToUpdate, dropletsToCreate := rd.dropletsToUpdateCreate()
 	log.Println("active droplets to update", dropletsToUpdate)
-	log.Println("active droplets to create ", dropletsToCreate)
+	log.Println("droplets to create ", dropletsToCreate)
 	dropletsToDelete := rd.activeDropletsToDelete()
 	log.Println("active droplets to delete ", dropletsToDelete)
 
