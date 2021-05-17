@@ -245,7 +245,8 @@ func (rd *ReconcileDroplets) updateDroplets(ctx context.Context, dropletsToUpdat
 			err := dolocal.UpdateDroplet(ctx, rd.client, id, dropletAction.action, dropletAction.value)
 			if err != nil {
 				log.Println("error during action request for droplet ", id, " error: ", err)
-				return err
+				// we do not return here as there may be more actions to complete
+				// for this droplet.
 			}
 		}
 	}
