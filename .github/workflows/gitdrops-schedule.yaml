@@ -2,7 +2,7 @@ name: GitDrops Schedule
 
 on:
   schedule:
-    - cron: '43 16 * * *'       
+    - cron: "*/5 * * * *"       
 
 jobs:
   build:
