@@ -40,7 +40,7 @@ func ReadGitDrops() (GitDrops, error) {
 		}
 		gitDrops.Droplets[i].UserData.Data = string(userData)
 	}
-	log.Println("created:", gitDrops)
+	log.Println("gitdrops.yaml processed:", gitDrops)
 	return gitDrops, nil
 }
 
