@@ -29,11 +29,19 @@ jobs:
       with:
         github_token: ${{ secrets.GITHUB_TOKEN }}
         branch: ${{ github.ref }}
+
+  sleep:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Sleep for 2 minutes
+      uses: jakejarvis/wait-action@master
+      with:
+        time: '2m'
+
   gitdrops-run:
     runs-on: ubuntu-latest
     env:
             DIGITALOCEAN_TOKEN: ${{ secrets.DIGITALOCEAN_TOKEN }}
-
     steps:
     - uses: actions/checkout@v2
 
