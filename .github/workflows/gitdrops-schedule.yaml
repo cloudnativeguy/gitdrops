@@ -28,7 +28,7 @@ jobs:
         branch: ${{ github.ref }}
     env:
             DIGITALOCEAN_TOKEN: ${{ secrets.DIGITALOCEAN_TOKEN }}
-    steps:
+
     - uses: actions/checkout@v2
     - name: Set up Go
       uses: actions/setup-go@v2
