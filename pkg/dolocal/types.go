@@ -30,7 +30,11 @@ type LocalDropletCreateRequest struct {
 }
 
 // TODO
-type LocalVolumeCreateRequest struct{}
+type LocalVolumeCreateRequest struct {
+	Name          string `yaml:"name"`
+	Region        string `yaml:"region"`
+	SizeGigaBytes int64  `yaml:"sizeGigaBytes"`
+}
 
 // UserData stores the Path of a userdata file and/or the Data itself. In the event that path is
 // defined, Data is populated with contents of the file at Path. Thus Path 'data' takes precedence

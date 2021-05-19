@@ -201,7 +201,7 @@ func (dr *DropletReconciler) CreateObjects(ctx context.Context) error {
 func (dr *DropletReconciler) UpdateObjects(ctx context.Context) error {
 	for id, dropletActions := range dr.dropletsToUpdate {
 		for _, dropletAction := range dropletActions {
-			err := dolocal.UpdateDroplet(ctx, dr.client, id, dropletAction.action, dropletAction.value)
+			err := dolocal.UpdateDroplet(ctx, dr.client, id.(int), dropletAction.action, dropletAction.value.(string))
 			if err != nil {
 				log.Println("error during action request for droplet ", id, " error: ", err)
 				// we do not return here as there may be more actions to complete

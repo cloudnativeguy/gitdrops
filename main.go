@@ -15,7 +15,7 @@ const (
 func main() {
 	ctx, cancel := context.WithTimeout(context.Background(), shortDuration)
 	defer cancel()
-	reconcileDroplets, err := reconcile.NewReconcileDroplets(ctx)
+	reconcileDroplets, err := reconcile.NewReconciler(ctx)
 	if err != nil {
 		return
 	}

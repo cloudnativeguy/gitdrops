@@ -27,21 +27,11 @@ type Reconciler struct {
 	dropletReconciler *DropletReconciler
 }
 
-type VolumeReconciler struct {
-	client                    *godo.Client
-	activeVolumes             []godo.Volume
-	localVolumeCreateRequests []dolocal.LocalVolumeCreateRequest
-	volumesToCreate           []dolocal.LocalVolumeCreateRequest
-	volumesToUpdate           actionsByID
-	volumesToDelete           []int
-}
-
-type actionsByID map[int][]action
+type actionsByID map[interface{}][]action
 
 type action struct {
-	object string
 	action string
-	value  string
+	value  interface{}
 }
 
 func NewReconciler(ctx context.Context) (Reconciler, error) {
@@ -53,18 +43,11 @@ func NewReconciler(ctx context.Context) (Reconciler, error) {
 
 	client := godo.NewFromToken(os.Getenv(digitaloceanToken))
 
-	//	activeVolumes, err := dolocal.ListVolumes(ctx, client)
-	//	if err != nil {
-	//		log.Println("Error while listing volumes", err)
-	//		return Reconciler{}, err
-	//	}
-
-	//	log.Println("active volumes on digitalocean:", len(activeVolumes))
-	//	volumeReconciler := &VolumeReconciler{
-	//		client:                    client,
-	//		activeVolumes:             activeVolumes,
-	//		localVolumeCreateRequests: gitDrops.Volumes,
-	//	}
+	volumeReconciler := &VolumeReconciler{
+		client:                    client,
+		localVolumeCreateRequests: gitDrops.Volumes,
+	}
+	err = volumeReconciler.Populate(ctx)
 
 	dropletReconciler := &DropletReconciler{
 		client:                     client,
@@ -73,8 +56,8 @@ func NewReconciler(ctx context.Context) (Reconciler, error) {
 	err = dropletReconciler.Populate(ctx)
 
 	return Reconciler{
-		privileges: gitDrops.Privileges,
-		//		volumeReconciler:  volumeReconciler,
+		privileges:        gitDrops.Privileges,
+		volumeReconciler:  volumeReconciler,
 		dropletReconciler: dropletReconciler,
 	}, nil
 }
