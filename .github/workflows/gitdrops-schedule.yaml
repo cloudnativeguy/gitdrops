@@ -2,7 +2,7 @@ name: GitDrops Schedule
 
 on:
   schedule:
-    - cron: "40 10 * * *"       
+    - cron: "10 11 * * *"       
 
 jobs:
   gitdrops-update:
