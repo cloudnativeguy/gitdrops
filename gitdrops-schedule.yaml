@@ -1,4 +1,9 @@
-- name: droplet
+privileges:
+  create: true
+  update: false
+  delete: false
+droplets:
+- name: centos-droplet
   region: nyc3
   size: s-1vcpu-1gb
   image: centos-8-x64         
