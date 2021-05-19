@@ -20,9 +20,9 @@ const (
 )
 
 type ReconcileDroplets struct {
-	client                     *godo.Client
-	activeDroplets             []godo.Droplet
-	localDropletCreateRequests []dolocal.LocalDropletCreateRequest
+	client         *godo.Client
+	gitDrops       dolocal.GitDrops
+	activeDroplets []godo.Droplet
 }
 
 type dropletActionsByID map[int][]dropletAction
@@ -33,13 +33,11 @@ type dropletAction struct {
 }
 
 func NewReconcileDroplets(ctx context.Context) (ReconcileDroplets, error) {
-	localDropletCreateRequests, err := dolocal.ReadLocalDropletCreateRequests()
+	gitDrops, err := dolocal.ReadGitDrops()
 	if err != nil {
 		log.Println(err)
 		return ReconcileDroplets{}, err
 	}
-
-	log.Println("gitdrops droplet create requests:", localDropletCreateRequests)
 
 	client := godo.NewFromToken(os.Getenv(digitaloceanToken))
 	activeDroplets, err := dolocal.ListDroplets(ctx, client)
@@ -48,12 +46,12 @@ func NewReconcileDroplets(ctx context.Context) (ReconcileDroplets, error) {
 		return ReconcileDroplets{}, err
 	}
 
-	log.Println("active droplets on DO:", len(activeDroplets))
+	log.Println("active droplets on digitalocean:", len(activeDroplets))
 
 	return ReconcileDroplets{
-		client:                     client,
-		localDropletCreateRequests: localDropletCreateRequests,
-		activeDroplets:             activeDroplets,
+		client:         client,
+		gitDrops:       gitDrops,
+		activeDroplets: activeDroplets,
 	}, nil
 }
 
@@ -65,20 +63,33 @@ func (rd *ReconcileDroplets) Reconcile(ctx context.Context) error {
 	log.Println("active droplets to delete ", dropletsToDelete)
 
 	dropletsToDelete = append(dropletsToDelete)
-	err := rd.deleteDroplets(ctx, dropletsToDelete)
-	if err != nil {
-		log.Println("error deleting droplet")
-		return err
+	if rd.gitDrops.Privileges.Delete {
+		err := rd.deleteDroplets(ctx, dropletsToDelete)
+		if err != nil {
+			log.Println("error deleting droplet")
+			return err
+		}
+	} else {
+		log.Println("gitdrops.yaml does not have delete privileges")
 	}
-	err = rd.createDroplets(ctx, dropletsToCreate)
-	if err != nil {
-		log.Println("error creating droplet")
-		return err
+
+	if rd.gitDrops.Privileges.Create {
+		err := rd.createDroplets(ctx, dropletsToCreate)
+		if err != nil {
+			log.Println("error creating droplet")
+			return err
+		}
+	} else {
+		log.Println("gitdrops.yaml does not have create privileges")
 	}
-	err = rd.updateDroplets(ctx, dropletsToUpdate)
-	if err != nil {
-		log.Println("error updating droplet")
-		return err
+	if rd.gitDrops.Privileges.Update {
+		err := rd.updateDroplets(ctx, dropletsToUpdate)
+		if err != nil {
+			log.Println("error updating droplet")
+			return err
+		}
+	} else {
+		log.Println("gitdrops.yaml does not have update privileges")
 	}
 
 	return nil
@@ -145,7 +156,7 @@ func translateDropletCreateRequest(localDropletCreateRequest dolocal.LocalDrople
 func (rd *ReconcileDroplets) dropletsToUpdateCreate() (dropletActionsByID, []dolocal.LocalDropletCreateRequest) {
 	dropletsToCreate := make([]dolocal.LocalDropletCreateRequest, 0)
 	dropletActionsByID := make(dropletActionsByID)
-	for _, localDropletCreateRequest := range rd.localDropletCreateRequests {
+	for _, localDropletCreateRequest := range rd.gitDrops.Droplets {
 		dropletIsActive := false
 		for _, activeDroplet := range rd.activeDroplets {
 			if localDropletCreateRequest.Name == activeDroplet.Name {
@@ -176,7 +187,7 @@ func (rd *ReconcileDroplets) activeDropletsToDelete() []int {
 
 	for _, activeDroplet := range rd.activeDroplets {
 		activeDropletInSpec := false
-		for _, localDropletCreateRequest := range rd.localDropletCreateRequests {
+		for _, localDropletCreateRequest := range rd.gitDrops.Droplets {
 			if localDropletCreateRequest.Name == activeDroplet.Name {
 				activeDropletInSpec = true
 				continue

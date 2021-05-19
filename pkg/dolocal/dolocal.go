@@ -11,59 +11,37 @@ import (
 )
 
 const (
-	gitdropsYamlPath   = "./gitdrops.yaml"
-	userDataPathPrefix = "./userdata-"
-	retries            = 10
-	resize             = "resize"
-	rebuild            = "rebuild"
+	gitdropsYamlPath = "./gitdrops.yaml"
+	retries          = 10
+	resize           = "resize"
+	rebuild          = "rebuild"
 )
 
-type UserData struct {
-	Path string `yaml:"path,omitempty"`
-	Data string `yaml:"data,omitempty"`
-}
+// ReadGitDrops reads and unmarshals from gitdrops.yaml
+func ReadGitDrops() (GitDrops, error) {
+	gitDrops := GitDrops{}
 
-// LocalDropletCreateRequest is a simplified representation of godo.DropletCreateRequest.
-// It is only a single level deep to enable unmarshalling from gitdrops.yaml.
-type LocalDropletCreateRequest struct {
-	Name              string   `yaml:"name"`
-	Region            string   `yaml:"region"`
-	Size              string   `yaml:"size"`
-	Image             string   `yaml:"image"`
-	SSHKeyFingerprint string   `yaml:"sshKeyFingerprint"`
-	Backups           bool     `yaml:"backups"`
-	IPv6              bool     `yaml:"ipv6"`
-	Monitoring        bool     `yaml:"monitoring"`
-	UserData          UserData `yaml:"userData,omitempty"`
-	Volumes           []string `yaml:"volumes,omitempty"`
-	Tags              []string `yaml:"tags"`
-	VPCUUID           string   `yaml:"vpcuuid,omitempty"`
-}
-
-// ReadLocalDropletCreateRequests reads and unmarshals from gitops.yaml
-func ReadLocalDropletCreateRequests() ([]LocalDropletCreateRequest, error) {
 	gitdropsYaml, err := ioutil.ReadFile(gitdropsYamlPath)
 	if err != nil {
-		return nil, err
+		return gitDrops, err
 	}
 
-	var localDropletCreateRequests []LocalDropletCreateRequest
-	err = yaml.Unmarshal(gitdropsYaml, &localDropletCreateRequests)
+	err = yaml.Unmarshal(gitdropsYaml, &gitDrops)
 	if err != nil {
-		return nil, err
+		return gitDrops, err
 	}
-	for i, localDropletCreateRequest := range localDropletCreateRequests {
-		if localDropletCreateRequest.UserData.Path == "" {
+	for i, droplet := range gitDrops.Droplets {
+		if droplet.UserData.Path == "" {
 			continue
 		}
-		userData, err := ioutil.ReadFile(localDropletCreateRequest.UserData.Path)
+		userData, err := ioutil.ReadFile(droplet.UserData.Path)
 		if err != nil {
-			return nil, err
+			return gitDrops, err
 		}
-		localDropletCreateRequests[i].UserData.Data = string(userData)
+		gitDrops.Droplets[i].UserData.Data = string(userData)
 	}
-	log.Println("created:", localDropletCreateRequests)
-	return localDropletCreateRequests, nil
+	log.Println("created:", gitDrops)
+	return gitDrops, nil
 }
 
 // ListDroplets lists all active droplets on DO account

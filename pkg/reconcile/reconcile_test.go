@@ -9,21 +9,21 @@ import (
 	"github.com/digitalocean/godo"
 )
 
-func newTestReconcileDroplets(client *godo.Client, activeDroplets []godo.Droplet, localDropletCreateRequests []dolocal.LocalDropletCreateRequest) *ReconcileDroplets {
+func newTestReconcileDroplets(client *godo.Client, activeDroplets []godo.Droplet, gitDrops dolocal.GitDrops) *ReconcileDroplets {
 	return &ReconcileDroplets{
-		client:                     client,
-		localDropletCreateRequests: localDropletCreateRequests,
-		activeDroplets:             activeDroplets,
+		client:         client,
+		gitDrops:       gitDrops,
+		activeDroplets: activeDroplets,
 	}
 }
 
 func TestDropletsToUpdateCreate(t *testing.T) {
 	tcases := []struct {
-		name                       string
-		activeDroplets             []godo.Droplet
-		localDropletCreateRequests []dolocal.LocalDropletCreateRequest
-		dropletsToUpdate           dropletActionsByID
-		dropletsToCreate           []dolocal.LocalDropletCreateRequest
+		name             string
+		activeDroplets   []godo.Droplet
+		gitDrops         dolocal.GitDrops
+		dropletsToUpdate dropletActionsByID
+		dropletsToCreate []dolocal.LocalDropletCreateRequest
 	}{
 		{
 			name: "test case 1",
@@ -41,15 +41,17 @@ func TestDropletsToUpdateCreate(t *testing.T) {
 					Name: "droplet-3",
 				},
 			},
-			localDropletCreateRequests: []dolocal.LocalDropletCreateRequest{
-				dolocal.LocalDropletCreateRequest{
-					Name: "droplet-3",
-				},
-				dolocal.LocalDropletCreateRequest{
-					Name: "droplet-4",
-				},
-				dolocal.LocalDropletCreateRequest{
-					Name: "droplet-5",
+			gitDrops: dolocal.GitDrops{
+				Droplets: []dolocal.LocalDropletCreateRequest{
+					dolocal.LocalDropletCreateRequest{
+						Name: "droplet-3",
+					},
+					dolocal.LocalDropletCreateRequest{
+						Name: "droplet-4",
+					},
+					dolocal.LocalDropletCreateRequest{
+						Name: "droplet-5",
+					},
 				},
 			},
 			dropletsToUpdate: make(dropletActionsByID),
@@ -78,15 +80,18 @@ func TestDropletsToUpdateCreate(t *testing.T) {
 					Name: "droplet-3",
 				},
 			},
-			localDropletCreateRequests: []dolocal.LocalDropletCreateRequest{
-				dolocal.LocalDropletCreateRequest{
-					Name: "droplet-1",
-				},
-				dolocal.LocalDropletCreateRequest{
-					Name: "droplet-2",
-				},
-				dolocal.LocalDropletCreateRequest{
-					Name: "droplet-3",
+			gitDrops: dolocal.GitDrops{
+				Droplets: []dolocal.LocalDropletCreateRequest{
+
+					dolocal.LocalDropletCreateRequest{
+						Name: "droplet-1",
+					},
+					dolocal.LocalDropletCreateRequest{
+						Name: "droplet-2",
+					},
+					dolocal.LocalDropletCreateRequest{
+						Name: "droplet-3",
+					},
 				},
 			},
 			dropletsToUpdate: make(dropletActionsByID),
@@ -95,15 +100,17 @@ func TestDropletsToUpdateCreate(t *testing.T) {
 		{
 			name:           "test case 3",
 			activeDroplets: []godo.Droplet{},
-			localDropletCreateRequests: []dolocal.LocalDropletCreateRequest{
-				dolocal.LocalDropletCreateRequest{
-					Name: "droplet-1",
-				},
-				dolocal.LocalDropletCreateRequest{
-					Name: "droplet-2",
-				},
-				dolocal.LocalDropletCreateRequest{
-					Name: "droplet-3",
+			gitDrops: dolocal.GitDrops{
+				Droplets: []dolocal.LocalDropletCreateRequest{
+					dolocal.LocalDropletCreateRequest{
+						Name: "droplet-1",
+					},
+					dolocal.LocalDropletCreateRequest{
+						Name: "droplet-2",
+					},
+					dolocal.LocalDropletCreateRequest{
+						Name: "droplet-3",
+					},
 				},
 			},
 			dropletsToUpdate: make(dropletActionsByID),
@@ -144,19 +151,20 @@ func TestDropletsToUpdateCreate(t *testing.T) {
 					Name: "droplet-3",
 				},
 			},
-
-			localDropletCreateRequests: []dolocal.LocalDropletCreateRequest{
-				dolocal.LocalDropletCreateRequest{
-					Name:  "droplet-1",
-					Image: "ubuntu-16-04-x64",
-				},
-				dolocal.LocalDropletCreateRequest{
-					Name:  "droplet-2",
-					Image: "ubuntu-16-04-x64",
-					Size:  "s-1vcpu-2gb",
-				},
-				dolocal.LocalDropletCreateRequest{
-					Name: "droplet-4",
+			gitDrops: dolocal.GitDrops{
+				Droplets: []dolocal.LocalDropletCreateRequest{
+					dolocal.LocalDropletCreateRequest{
+						Name:  "droplet-1",
+						Image: "ubuntu-16-04-x64",
+					},
+					dolocal.LocalDropletCreateRequest{
+						Name:  "droplet-2",
+						Image: "ubuntu-16-04-x64",
+						Size:  "s-1vcpu-2gb",
+					},
+					dolocal.LocalDropletCreateRequest{
+						Name: "droplet-4",
+					},
 				},
 			},
 			dropletsToUpdate: dropletActionsByID{
@@ -185,7 +193,7 @@ func TestDropletsToUpdateCreate(t *testing.T) {
 		},
 	}
 	for _, tc := range tcases {
-		rd := newTestReconcileDroplets(nil, tc.activeDroplets, tc.localDropletCreateRequests)
+		rd := newTestReconcileDroplets(nil, tc.activeDroplets, tc.gitDrops)
 
 		dropletsToUpdate, dropletsToCreate := rd.dropletsToUpdateCreate()
 		if !reflect.DeepEqual(dropletsToUpdate, tc.dropletsToUpdate) {
@@ -200,10 +208,10 @@ func TestDropletsToUpdateCreate(t *testing.T) {
 
 func TestActiveDropletsToDelete(t *testing.T) {
 	tcases := []struct {
-		name                       string
-		activeDroplets             []godo.Droplet
-		localDropletCreateRequests []dolocal.LocalDropletCreateRequest
-		dropletsToDelete           []int
+		name             string
+		activeDroplets   []godo.Droplet
+		gitDrops         dolocal.GitDrops
+		dropletsToDelete []int
 	}{
 		{
 			name: "test case 1",
@@ -221,15 +229,18 @@ func TestActiveDropletsToDelete(t *testing.T) {
 					Name: "droplet-3",
 				},
 			},
-			localDropletCreateRequests: []dolocal.LocalDropletCreateRequest{
-				dolocal.LocalDropletCreateRequest{
-					Name: "droplet-3",
-				},
-				dolocal.LocalDropletCreateRequest{
-					Name: "droplet-4",
-				},
-				dolocal.LocalDropletCreateRequest{
-					Name: "droplet-5",
+			gitDrops: dolocal.GitDrops{
+				Droplets: []dolocal.LocalDropletCreateRequest{
+
+					dolocal.LocalDropletCreateRequest{
+						Name: "droplet-3",
+					},
+					dolocal.LocalDropletCreateRequest{
+						Name: "droplet-4",
+					},
+					dolocal.LocalDropletCreateRequest{
+						Name: "droplet-5",
+					},
 				},
 			},
 			dropletsToDelete: []int{1, 2},
@@ -250,15 +261,17 @@ func TestActiveDropletsToDelete(t *testing.T) {
 					Name: "droplet-3",
 				},
 			},
-			localDropletCreateRequests: []dolocal.LocalDropletCreateRequest{
-				dolocal.LocalDropletCreateRequest{
-					Name: "droplet-1",
-				},
-				dolocal.LocalDropletCreateRequest{
-					Name: "droplet-2",
-				},
-				dolocal.LocalDropletCreateRequest{
-					Name: "droplet-3",
+			gitDrops: dolocal.GitDrops{
+				Droplets: []dolocal.LocalDropletCreateRequest{
+					dolocal.LocalDropletCreateRequest{
+						Name: "droplet-1",
+					},
+					dolocal.LocalDropletCreateRequest{
+						Name: "droplet-2",
+					},
+					dolocal.LocalDropletCreateRequest{
+						Name: "droplet-3",
+					},
 				},
 			},
 			dropletsToDelete: []int{},
@@ -266,15 +279,17 @@ func TestActiveDropletsToDelete(t *testing.T) {
 		{
 			name:           "test case 3",
 			activeDroplets: []godo.Droplet{},
-			localDropletCreateRequests: []dolocal.LocalDropletCreateRequest{
-				dolocal.LocalDropletCreateRequest{
-					Name: "droplet-1",
-				},
-				dolocal.LocalDropletCreateRequest{
-					Name: "droplet-2",
-				},
-				dolocal.LocalDropletCreateRequest{
-					Name: "droplet-3",
+			gitDrops: dolocal.GitDrops{
+				Droplets: []dolocal.LocalDropletCreateRequest{
+					dolocal.LocalDropletCreateRequest{
+						Name: "droplet-1",
+					},
+					dolocal.LocalDropletCreateRequest{
+						Name: "droplet-2",
+					},
+					dolocal.LocalDropletCreateRequest{
+						Name: "droplet-3",
+					},
 				},
 			},
 			dropletsToDelete: []int{},
@@ -298,24 +313,26 @@ func TestActiveDropletsToDelete(t *testing.T) {
 					Name: "droplet-3",
 				},
 			},
+			gitDrops: dolocal.GitDrops{
+				Droplets: []dolocal.LocalDropletCreateRequest{
 
-			localDropletCreateRequests: []dolocal.LocalDropletCreateRequest{
-				dolocal.LocalDropletCreateRequest{
-					Name:   "droplet-1",
-					Region: "nyc3",
-				},
-				dolocal.LocalDropletCreateRequest{
-					Name: "droplet-2",
-				},
-				dolocal.LocalDropletCreateRequest{
-					Name: "droplet-4",
+					dolocal.LocalDropletCreateRequest{
+						Name:   "droplet-1",
+						Region: "nyc3",
+					},
+					dolocal.LocalDropletCreateRequest{
+						Name: "droplet-2",
+					},
+					dolocal.LocalDropletCreateRequest{
+						Name: "droplet-4",
+					},
 				},
 			},
 			dropletsToDelete: []int{3},
 		},
 	}
 	for _, tc := range tcases {
-		rd := newTestReconcileDroplets(nil, tc.activeDroplets, tc.localDropletCreateRequests)
+		rd := newTestReconcileDroplets(nil, tc.activeDroplets, tc.gitDrops)
 
 		dropletsToDelete := rd.activeDropletsToDelete()
 		if !reflect.DeepEqual(dropletsToDelete, tc.dropletsToDelete) {
