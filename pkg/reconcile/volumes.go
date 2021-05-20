@@ -11,6 +11,7 @@ import (
 )
 
 type VolumeReconciler struct {
+	privileges                dolocal.Privileges
 	client                    *godo.Client
 	activeVolumes             []godo.Volume
 	localVolumeCreateRequests []dolocal.LocalVolumeCreateRequest
@@ -18,6 +19,8 @@ type VolumeReconciler struct {
 	volumesToUpdate           actionsByID
 	volumesToDelete           []string
 }
+
+var _ ObjectReconciler = &VolumeReconciler{}
 
 func (vr *VolumeReconciler) Populate(ctx context.Context) error {
 	activeVolumes, err := dolocal.ListVolumes(ctx, vr.client)
@@ -27,13 +30,62 @@ func (vr *VolumeReconciler) Populate(ctx context.Context) error {
 	}
 
 	vr.activeVolumes = activeVolumes
-	vr.ObjectsToUpdateAndCreate()
-	vr.ObjectsToDelete()
+	vr.SetObjectsToUpdateAndCreate()
+	vr.SetObjectsToDelete()
 
 	log.Println("active volumes:", len(activeVolumes))
 	log.Println("active volumes to delete:", vr.volumesToDelete)
 	log.Println("gitdrops volumes to update:", vr.volumesToUpdate)
 	log.Println("gitdrops volumes to create:", vr.volumesToCreate)
+
+	return nil
+}
+
+func (vr *VolumeReconciler) Reconcile(ctx context.Context) error {
+	if vr.privileges.Delete {
+		err := vr.DeleteObjects(ctx)
+		if err != nil {
+			log.Println("error deleting droplet")
+			return err
+		}
+	} else {
+		log.Println("gitdrops.yaml does not have delete privileges")
+	}
+
+	if vr.privileges.Create {
+		err := vr.CreateObjects(ctx)
+		if err != nil {
+			log.Println("error creating droplet")
+			return err
+		}
+	} else {
+		log.Println("gitdrops.yaml does not have create privileges")
+	}
+	if vr.privileges.Update {
+		err := vr.UpdateObjects(ctx)
+		if err != nil {
+			log.Println("error updating droplet")
+			return err
+		}
+	} else {
+		log.Println("gitdrops.yaml does not have update privileges")
+	}
+
+	return nil
+}
+
+func (vr *VolumeReconciler) ReconcilePeripherals(ctx context.Context, objectsToUpdate actionsByID) error {
+	activeVolumes, err := dolocal.ListVolumes(ctx, vr.client)
+	if err != nil {
+		log.Println("Error while listing volumes", err)
+		return err
+	}
+	vr.activeVolumes = activeVolumes
+	vr.volumesToUpdate = objectsToUpdate
+	err = vr.UpdateObjects(ctx)
+	if err != nil {
+		return err
+	}
 
 	return nil
 }
@@ -61,7 +113,7 @@ func translateVolumeCreateRequest(localVolumeCreateRequest dolocal.LocalVolumeCr
 // gitdrops.yaml, but the active volumes are no longer in sync with the local gitdrops version.
 // * volumesToCreate: LocalVolumeCreateRequests of volumes defined in gitdrops.yaml that are NOT
 // active on DO and therefore should be created.
-func (vr *VolumeReconciler) ObjectsToUpdateAndCreate() {
+func (vr *VolumeReconciler) SetObjectsToUpdateAndCreate() {
 	volumesToCreate := make([]dolocal.LocalVolumeCreateRequest, 0)
 	volumeActionsByID := make(actionsByID)
 	for _, localVolumeCreateRequest := range vr.localVolumeCreateRequests {
@@ -92,7 +144,7 @@ func (vr *VolumeReconciler) ObjectsToUpdateAndCreate() {
 // ObjectToDelete populates VolumeReconciler with  a list of IDs for volumes that need
 // to be deleted upon reconciliation of gitdrops.yaml (ie these volumes are active but not present
 // in the spec)
-func (vr *VolumeReconciler) ObjectsToDelete() {
+func (vr *VolumeReconciler) SetObjectsToDelete() {
 	volumesToDelete := make([]string, 0)
 
 	for _, activeVolume := range vr.activeVolumes {
@@ -109,6 +161,10 @@ func (vr *VolumeReconciler) ObjectsToDelete() {
 		}
 	}
 	vr.volumesToDelete = volumesToDelete
+}
+
+func (vr *VolumeReconciler) GetObjectsToUpdate() actionsByID {
+	return vr.volumesToUpdate
 }
 
 func getVolumeActions(localVolumeCreateRequest dolocal.LocalVolumeCreateRequest, activeVolume godo.Volume) []action {
@@ -156,16 +212,35 @@ func (vr *VolumeReconciler) CreateObjects(ctx context.Context) error {
 }
 
 func (vr *VolumeReconciler) UpdateObjects(ctx context.Context) error {
-	for volumeID, volumeActions := range vr.volumesToUpdate {
+	for id, volumeActions := range vr.volumesToUpdate {
 		for _, volumeAction := range volumeActions {
 			switch volumeAction.action {
 			case resize:
-				err := dolocal.ResizeVolume(ctx, vr.client, volumeID.(string), vr.findVolumeRegion(volumeID.(string)), volumeAction.value)
+				err := dolocal.ResizeVolume(ctx, vr.client, id.(string), vr.findVolumeRegion(id.(string)), volumeAction.value)
 				if err != nil {
-					log.Println("error during action request for volume ", volumeID, " error: ", err)
+					log.Println("error during resize action request for volume ", id, " error: ", err)
 					// we do not return here as there may be more actions to complete
 					// for this volume.
 				}
+			case attach:
+				// in this case, 'id' is that of the droplet and 'value' is the volume
+				// id. This is because this action was detected and created by the
+				// droplet reconciler.
+				err := dolocal.AttachVolume(ctx, vr.client, volumeAction.value.(string), id.(int))
+				if err != nil {
+					log.Println("error during attach action request for volume ", volumeAction.value.(string), " error: ", err)
+
+				}
+			case detach:
+				// in this case, 'id' is that of the droplet and 'value' is the volume
+				// id. This is because this action was detected and created by the
+				// droplet reconciler.
+				err := dolocal.DetachVolume(ctx, vr.client, volumeAction.value.(string), id.(int))
+				if err != nil {
+					log.Println("error during detach action request for volume ", volumeAction.value.(string), " error: ", err)
+
+				}
+
 			}
 		}
 	}
