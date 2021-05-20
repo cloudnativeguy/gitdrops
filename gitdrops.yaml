@@ -3,12 +3,12 @@ privileges:
   update: false
   delete: true 
 droplets:
-        #- name: centos-droplet
-        #  region: nyc3
-        #  size: s-1vcpu-1gb
-        #  image: centos-8-x64         
-        #  backups: false
-        #  ipv6: false
-        #  sshKeyFingerprint: 1f:41:5c:c0:26:0b:bc:36:8b:0b:04:80:7e:ef:b0:85
+- name: centos-droplet
+  region: nyc3
+  size: s-1vcpu-1gb
+  image: centos-8-x64         
+  backups: false
+  ipv6: false
+  sshKeyFingerprint: 1f:41:5c:c0:26:0b:bc:36:8b:0b:04:80:7e:ef:b0:85
         #  userData:
         #    path: cloudconfig
