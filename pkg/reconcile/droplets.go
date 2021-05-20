@@ -90,7 +90,7 @@ func (dr *DropletReconciler) ReconcilePeripherals(context.Context, actionsByID) 
 	return nil
 }
 
-func translateDropletCreateRequest(localDropletCreateRequest dolocal.LocalDropletCreateRequest) (*godo.DropletCreateRequest, error) {
+func (dr *DropletReconciler) translateDropletCreateRequest(localDropletCreateRequest dolocal.LocalDropletCreateRequest) (*godo.DropletCreateRequest, error) {
 	createRequest := &godo.DropletCreateRequest{}
 	if localDropletCreateRequest.Name == "" {
 		return createRequest, errors.New("droplet name not specified")
@@ -125,7 +125,7 @@ func translateDropletCreateRequest(localDropletCreateRequest dolocal.LocalDrople
 	if len(localDropletCreateRequest.Volumes) != 0 {
 		dropletCreateVolumes := make([]godo.DropletCreateVolume, 0)
 		for _, vol := range localDropletCreateRequest.Volumes {
-			dropletCreateVolume := godo.DropletCreateVolume{ID: vol}
+			dropletCreateVolume := godo.DropletCreateVolume{ID: dr.volumeNameToID[vol]}
 			dropletCreateVolumes = append(dropletCreateVolumes, dropletCreateVolume)
 		}
 		createRequest.Volumes = dropletCreateVolumes
@@ -288,7 +288,7 @@ func (dr *DropletReconciler) DeleteObjects(ctx context.Context) error {
 
 func (dr *DropletReconciler) CreateObjects(ctx context.Context) error {
 	for _, dropletToCreate := range dr.dropletsToCreate {
-		dropletCreateRequest, err := translateDropletCreateRequest(dropletToCreate)
+		dropletCreateRequest, err := dr.translateDropletCreateRequest(dropletToCreate)
 		if err != nil {
 			log.Println("error converting gitdrops.yaml to droplet create request:")
 			return err

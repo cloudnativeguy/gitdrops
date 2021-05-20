@@ -3,7 +3,7 @@ privileges:
   update: true 
   delete: true 
 droplets:
-- name: centos-droplet-1
+- name: centos-droplet
   region: nyc3
   size: s-1vcpu-1gb
   image: centos-8-x64         
@@ -11,8 +11,8 @@ droplets:
   ipv6: false
   volumes: ["volume-1", "volume-2"]
   sshKeyFingerprint: 1f:41:5c:c0:26:0b:bc:36:8b:0b:04:80:7e:ef:b0:85
-  userData:
-    path: cloudconfig
+  #  userData:
+  #    path: cloudconfig
 volumes:
 - name: volume-1
   region: nyc3
