@@ -3,9 +3,10 @@ package dolocal
 import (
 	"context"
 	"errors"
-	"github.com/digitalocean/godo"
 	"io/ioutil"
 	"log"
+
+	"github.com/digitalocean/godo"
 
 	"gopkg.in/yaml.v2"
 )
@@ -168,7 +169,7 @@ func ListVolumes(ctx context.Context, client *godo.Client) ([]godo.Volume, error
 		for i := 0; i < retries; i++ {
 			volumes, resp, err = client.Storage.ListVolumes(ctx, opt)
 			if err != nil {
-				log.Println("error listing droplets", err)
+				log.Println("error listing volumes", err)
 				if i == retries-1 {
 					return list, err
 				}

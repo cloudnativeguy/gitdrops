@@ -244,10 +244,11 @@ func volumesToAttach(activeDroplet godo.Droplet, localDropletCreateRequest doloc
 				volumeFound = true
 				continue
 			}
+
 		}
 		if !volumeFound {
 			// create attach action for volume
-			log.Println("volume ", localDropletCreateRequestVolume, " not attached, attach to droplet")
+			log.Println("volume", localDropletCreateRequestVolume, "not attached, attach to droplet")
 			action := action{
 				action: attach,
 				value:  localDropletCreateRequestVolume,

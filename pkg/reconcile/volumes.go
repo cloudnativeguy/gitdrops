@@ -224,9 +224,9 @@ func (vr *VolumeReconciler) UpdateObjects(ctx context.Context) error {
 				}
 			case attach:
 				// in this case, 'id' is that of the droplet and 'value' is the volume
-				// id. This is because this action was detected and created by the
+				// name. This is because this action was detected and created by the
 				// droplet reconciler.
-				err := dolocal.AttachVolume(ctx, vr.client, volumeAction.value.(string), id.(int))
+				err := dolocal.AttachVolume(ctx, vr.client, vr.findVolumeIDByName(volumeAction.value.(string)), id.(int))
 				if err != nil {
 					log.Println("error during attach action request for volume ", volumeAction.value.(string), " error: ", err)
 
@@ -245,6 +245,15 @@ func (vr *VolumeReconciler) UpdateObjects(ctx context.Context) error {
 		}
 	}
 	return nil
+}
+
+func (vr *VolumeReconciler) findVolumeIDByName(volName string) string {
+	for _, vol := range vr.activeVolumes {
+		if vol.Name == volName {
+			return vol.ID
+		}
+	}
+	return ""
 }
 
 func (vr *VolumeReconciler) findVolumeRegion(volID string) string {
