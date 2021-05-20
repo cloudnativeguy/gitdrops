@@ -18,6 +18,7 @@ type DropletReconciler struct {
 	dropletsToCreate           []dolocal.LocalDropletCreateRequest
 	dropletsToUpdate           actionsByID
 	dropletsToDelete           []int
+	volumeNameToID             map[string]string
 }
 
 var _ ObjectReconciler = &DropletReconciler{}
@@ -32,6 +33,17 @@ func (dr *DropletReconciler) Populate(ctx context.Context) error {
 	dr.activeDroplets = activeDroplets
 	dr.SetObjectsToUpdateAndCreate()
 	dr.SetObjectsToDelete()
+
+	activeVolumes, err := dolocal.ListVolumes(ctx, dr.client)
+	if err != nil {
+		log.Println("Error while listing droplets", err)
+		return err
+	}
+	volumeNameToID := make(map[string]string)
+	for _, activeVolume := range activeVolumes {
+		volumeNameToID[activeVolume.Name] = activeVolume.ID
+	}
+	dr.volumeNameToID = volumeNameToID
 
 	log.Println("active droplets:", len(activeDroplets))
 	log.Println("active droplets to delete:", dr.dropletsToDelete)
@@ -136,7 +148,7 @@ func translateDropletCreateRequest(localDropletCreateRequest dolocal.LocalDrople
 // gitdrops.yaml, but the active droplets are no longer in sync with the local gitdrops version.
 // * dropletsToCreate: LocalDropletCreateRequests of droplets defined in gitdrops.yaml that are NOT
 // active on DO and therefore should be created.
-func (dr *DropletReconciler) SetObjectsToUpdateAndCreate(ctx context.Context) {
+func (dr *DropletReconciler) SetObjectsToUpdateAndCreate() {
 	dropletsToCreate := make([]dolocal.LocalDropletCreateRequest, 0)
 	dropletActionsByID := make(actionsByID)
 	for _, localDropletCreateRequest := range dr.localDropletCreateRequests {
@@ -147,7 +159,7 @@ func (dr *DropletReconciler) SetObjectsToUpdateAndCreate(ctx context.Context) {
 				log.Println("droplet found check for change")
 				dropletActions := getDropletActions(localDropletCreateRequest, activeDroplet)
 				dropletActions = append(dropletActions, volumesToDetach(activeDroplet, localDropletCreateRequest)...)
-				dropletActions = append(dropletActions, volumesToAttach(activeDroplet, dr.volumeIDLookup(ctx))...)
+				dropletActions = append(dropletActions, dr.volumesToAttach(activeDroplet, localDropletCreateRequest)...)
 				if len(dropletActions) != 0 {
 					dropletActionsByID[activeDroplet.ID] = dropletActions
 				}
@@ -210,22 +222,6 @@ func getDropletActions(localDropletCreateRequest dolocal.LocalDropletCreateReque
 
 	return dropletActions
 }
-func (dr *DropletReconciler) volumeIDLookup(ctx context.Context) []string {
-	activeVolumes, err := dolocal.ListVolumes(ctx, dr.client)
-	if err != nil {
-		log.Println("Error while listing droplets", err)
-		return err
-	}
-	volumeIDs := make([]string, 0)
-	for _, activeVolume := range activeVolumes {
-		for _, localDropletCreateRequestVolume := range localDropletCreateRequest.Volumes {
-			if activeVolume.Name == localDropletCreateRequestVolume {
-				volumeIDs = append(volumeIDs, activeVolume.ID)
-			}
-		}
-	}
-	return volumeIDs
-}
 
 // volumesToDetach returns a slice of actions{action: detach, value: <volume-id>}
 func volumesToDetach(activeDroplet godo.Droplet, localDropletCreateRequest dolocal.LocalDropletCreateRequest) []action {
@@ -251,9 +247,9 @@ func volumesToDetach(activeDroplet godo.Droplet, localDropletCreateRequest doloc
 }
 
 // volumesToAttach returns a slice of actions{action: attach, value: <volume-id>}
-func volumesToAttach(activeDroplet godo.Droplet, localDropletCreateRequestVolumes []string) []action {
+func (dr *DropletReconciler) volumesToAttach(activeDroplet godo.Droplet, localDropletCreateRequest dolocal.LocalDropletCreateRequest) []action {
 	actions := make([]action, 0)
-	for _, localDropletCreateRequestVolume := range localDropletCreateRequestVolumes {
+	for _, localDropletCreateRequestVolume := range localDropletCreateRequest.Volumes {
 		volumeFound := false
 		for _, activeDropletVolumeID := range activeDroplet.VolumeIDs {
 			if localDropletCreateRequestVolume == activeDropletVolumeID {
@@ -267,7 +263,7 @@ func volumesToAttach(activeDroplet godo.Droplet, localDropletCreateRequestVolume
 			log.Println("volume", localDropletCreateRequestVolume, "not attached, attach to droplet")
 			action := action{
 				action: attach,
-				value:  localDropletCreateRequestVolume,
+				value:  dr.volumeNameToID[localDropletCreateRequestVolume],
 			}
 			actions = append(actions, action)
 		}
