@@ -108,7 +108,7 @@ func translateVolumeCreateRequest(localVolumeCreateRequest dolocal.LocalVolumeCr
 
 }
 
-// volumesToUpdateCreate poulates VolumeReconciler with two lists:
+// SetObjectsToUpdateCreate populates VolumeReconciler with two lists:
 // * volumesToUpdate: volumeActionsByID of volumes that are active on DO and are defined in
 // gitdrops.yaml, but the active volumes are no longer in sync with the local gitdrops version.
 // * volumesToCreate: LocalVolumeCreateRequests of volumes defined in gitdrops.yaml that are NOT
@@ -121,8 +121,6 @@ func (vr *VolumeReconciler) SetObjectsToUpdateAndCreate() {
 		for _, activeVolume := range vr.activeVolumes {
 			if localVolumeCreateRequest.Name == activeVolume.Name {
 				//volume already exists, check for change in request
-				log.Println("volume found check for change")
-				// only do below check if delete privileges are granted
 				volumeActions := getVolumeActions(localVolumeCreateRequest, activeVolume)
 				if len(volumeActions) != 0 {
 					volumeActionsByID[activeVolume.ID] = volumeActions
@@ -141,7 +139,7 @@ func (vr *VolumeReconciler) SetObjectsToUpdateAndCreate() {
 	vr.volumesToCreate = volumesToCreate
 }
 
-// ObjectToDelete populates VolumeReconciler with  a list of IDs for volumes that need
+// SetObjectToDelete populates VolumeReconciler with  a list of IDs for volumes that need
 // to be deleted upon reconciliation of gitdrops.yaml (ie these volumes are active but not present
 // in the spec)
 func (vr *VolumeReconciler) SetObjectsToDelete() {
@@ -170,7 +168,7 @@ func (vr *VolumeReconciler) GetObjectsToUpdate() actionsByID {
 func getVolumeActions(localVolumeCreateRequest dolocal.LocalVolumeCreateRequest, activeVolume godo.Volume) []action {
 	var volumeActions []action
 	if activeVolume.SizeGigaBytes != 0 && activeVolume.SizeGigaBytes != localVolumeCreateRequest.SizeGigaBytes {
-		log.Println("volume (name)", activeVolume.Name, " (ID)", activeVolume.ID, " size has been updated in gitdrops.yaml")
+		log.Println("volume", activeVolume.Name, "size has been updated in gitdrops.yaml")
 
 		volumeAction := action{
 			action: resize,
@@ -200,7 +198,6 @@ func (vr *VolumeReconciler) CreateObjects(ctx context.Context) error {
 			log.Println("error converting gitdrops.yaml to volume create request:")
 			return err
 		}
-		log.Println("volumeCreateRequest", volumeCreateRequest)
 		err = dolocal.CreateVolume(ctx, vr.client, volumeCreateRequest)
 		if err != nil {
 			log.Println("error creating volume ", volumeToCreate.Name)
@@ -226,7 +223,7 @@ func (vr *VolumeReconciler) UpdateObjects(ctx context.Context) error {
 				// in this case, 'id' is that of the droplet and 'value' is the volume
 				// name. This is because this action was detected and created by the
 				// droplet reconciler.
-				err := dolocal.AttachVolume(ctx, vr.client, vr.findVolumeIDByName(volumeAction.value.(string)), id.(int))
+				err := dolocal.AttachVolume(ctx, vr.client, volumeAction.value.(string), id.(int))
 				if err != nil {
 					log.Println("error during attach action request for volume ", volumeAction.value.(string), " error: ", err)
 

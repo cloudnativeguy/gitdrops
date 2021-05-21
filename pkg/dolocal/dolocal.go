@@ -41,7 +41,7 @@ func ReadGitDrops() (GitDrops, error) {
 		}
 		gitDrops.Droplets[i].UserData.Data = string(userData)
 	}
-	log.Println("gitdrops.yaml processed:", gitDrops)
+	log.Println("gitdrops.yaml contains", len(gitDrops.Droplets), "droplet(s) and", len(gitDrops.Volumes), "volume(s)")
 	return gitDrops, nil
 }
 
@@ -258,7 +258,7 @@ func DetachVolume(ctx context.Context, client *godo.Client, volID string, drople
 				return err
 			}
 		} else {
-			log.Println("volume action request for attachment ", volID, "returned ", response.Status)
+			log.Println("volume action request for detachment ", volID, "returned ", response.Status)
 			break
 		}
 	}

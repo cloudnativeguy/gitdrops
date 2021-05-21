@@ -86,20 +86,31 @@ func NewReconciler(ctx context.Context) (Reconciler, error) {
 }
 
 func (r *Reconciler) Reconcile(ctx context.Context) error {
+	log.Println("begin initial volume reconciliation(create, delete, resize)...")
 	err := r.volumeReconciler.Reconcile(ctx)
 	if err != nil {
 		return err
 	}
-
+	log.Println("initial volume reconciliation complete")
+	log.Println("begin droplet reconciliation(create, delete, resize, rebuild)...")
 	err = r.dropletReconciler.Reconcile(ctx)
 	if err != nil {
 		return err
 	}
+	log.Println("droplet reconciliation complete")
+	log.Println("begin secondary volume reconciliation (attach, detach)...")
 
+	// repopulate the droplet reconciler because the volumes have been reconciled
+	// and we need to search again for volume attach/detach actions.
+	err = r.dropletReconciler.Populate(ctx)
+	if err != nil {
+		return err
+	}
 	objectsToUpdate := r.dropletReconciler.GetObjectsToUpdate()
 	err = r.volumeReconciler.ReconcilePeripherals(ctx, objectsToUpdate)
 	if err != nil {
 		return err
 	}
+	log.Println("secondary volume reconciliation complete")
 	return nil
 }
