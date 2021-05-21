@@ -23,7 +23,8 @@ const (
 type ObjectReconciler interface {
 	Populate(context.Context) error
 	Reconcile(context.Context) error
-	ReconcilePeripherals(context.Context, actionsByID) error
+	SecondaryReconcile(context.Context, actionsByID) error
+	SetActiveObjects(context.Context) error
 	SetObjectsToUpdateAndCreate()
 	SetObjectsToDelete()
 	GetObjectsToUpdate() actionsByID
@@ -86,7 +87,7 @@ func NewReconciler(ctx context.Context) (Reconciler, error) {
 }
 
 func (r *Reconciler) Reconcile(ctx context.Context) error {
-	log.Println("begin initial volume reconciliation(create, delete, resize)...")
+	log.Println("begin initial volume reconciliation(create, resize)...")
 	err := r.volumeReconciler.Reconcile(ctx)
 	if err != nil {
 		return err
@@ -98,16 +99,17 @@ func (r *Reconciler) Reconcile(ctx context.Context) error {
 		return err
 	}
 	log.Println("droplet reconciliation complete")
-	log.Println("begin secondary volume reconciliation (attach, detach)...")
+	log.Println("begin secondary volume reconciliation (delete, attach, detach)...")
 
-	// repopulate the droplet reconciler because the volumes have been reconciled
-	// and we need to search again for volume attach/detach actions.
-	err = r.dropletReconciler.Populate(ctx)
+	// re-set active objects in the droplet reconciler because the volumes have been
+	// reconciled and we need to search again for volume attach/detach actions.
+	err = r.dropletReconciler.SetActiveObjects(ctx)
 	if err != nil {
 		return err
 	}
+	r.dropletReconciler.SetObjectsToUpdateAndCreate()
 	objectsToUpdate := r.dropletReconciler.GetObjectsToUpdate()
-	err = r.volumeReconciler.ReconcilePeripherals(ctx, objectsToUpdate)
+	err = r.volumeReconciler.SecondaryReconcile(ctx, objectsToUpdate)
 	if err != nil {
 		return err
 	}

@@ -42,6 +42,39 @@ func (vr *VolumeReconciler) Populate(ctx context.Context) error {
 }
 
 func (vr *VolumeReconciler) Reconcile(ctx context.Context) error {
+	if vr.privileges.Create {
+		err := vr.CreateObjects(ctx)
+		if err != nil {
+			log.Println("error creating volume")
+			return err
+		}
+	} else {
+		log.Println("gitdrops.yaml does not have create privileges")
+	}
+	if vr.privileges.Update {
+		err := vr.UpdateObjects(ctx)
+		if err != nil {
+			log.Println("error updating volume")
+			return err
+		}
+	} else {
+		log.Println("gitdrops.yaml does not have update privileges")
+	}
+
+	return nil
+}
+
+func (vr *VolumeReconciler) SetActiveObjects(ctx context.Context) error {
+	activeVolumes, err := dolocal.ListVolumes(ctx, vr.client)
+	if err != nil {
+		log.Println("Error while listing volumes", err)
+		return err
+	}
+	vr.activeVolumes = activeVolumes
+	return nil
+}
+
+func (vr *VolumeReconciler) SecondaryReconcile(ctx context.Context, objectsToUpdate actionsByID) error {
 	if vr.privileges.Delete {
 		err := vr.DeleteObjects(ctx)
 		if err != nil {
@@ -52,35 +85,11 @@ func (vr *VolumeReconciler) Reconcile(ctx context.Context) error {
 		log.Println("gitdrops.yaml does not have delete privileges")
 	}
 
-	if vr.privileges.Create {
-		err := vr.CreateObjects(ctx)
-		if err != nil {
-			log.Println("error creating droplet")
-			return err
-		}
-	} else {
-		log.Println("gitdrops.yaml does not have create privileges")
-	}
-	if vr.privileges.Update {
-		err := vr.UpdateObjects(ctx)
-		if err != nil {
-			log.Println("error updating droplet")
-			return err
-		}
-	} else {
-		log.Println("gitdrops.yaml does not have update privileges")
-	}
-
-	return nil
-}
-
-func (vr *VolumeReconciler) ReconcilePeripherals(ctx context.Context, objectsToUpdate actionsByID) error {
-	activeVolumes, err := dolocal.ListVolumes(ctx, vr.client)
+	err := vr.SetActiveObjects(ctx)
 	if err != nil {
-		log.Println("Error while listing volumes", err)
 		return err
 	}
-	vr.activeVolumes = activeVolumes
+
 	vr.volumesToUpdate = objectsToUpdate
 	err = vr.UpdateObjects(ctx)
 	if err != nil {

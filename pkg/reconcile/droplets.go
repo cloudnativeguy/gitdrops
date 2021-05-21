@@ -24,15 +24,7 @@ type DropletReconciler struct {
 var _ ObjectReconciler = &DropletReconciler{}
 
 func (dr *DropletReconciler) Populate(ctx context.Context) error {
-	activeDroplets, err := dolocal.ListDroplets(ctx, dr.client)
-	if err != nil {
-		log.Println("Error while listing droplets", err)
-		return err
-	}
-
-	dr.activeDroplets = activeDroplets
-
-	err = dr.setVolumeNameToID(ctx)
+	err := dr.SetActiveObjects(ctx)
 	if err != nil {
 		return err
 	}
@@ -40,7 +32,6 @@ func (dr *DropletReconciler) Populate(ctx context.Context) error {
 	dr.SetObjectsToUpdateAndCreate()
 	dr.SetObjectsToDelete()
 
-	log.Println("active droplets:", len(activeDroplets))
 	log.Println("active droplets to delete:", dr.dropletsToDelete)
 	log.Println("gitdrops droplets to update:", dr.dropletsToUpdate)
 	log.Println("gitdrops droplets to create:", dr.dropletsToCreate)
@@ -48,10 +39,18 @@ func (dr *DropletReconciler) Populate(ctx context.Context) error {
 	return nil
 }
 
-func (dr *DropletReconciler) setVolumeNameToID(ctx context.Context) error {
-	activeVolumes, err := dolocal.ListVolumes(ctx, dr.client)
+func (dr *DropletReconciler) SetActiveObjects(ctx context.Context) error {
+	activeDroplets, err := dolocal.ListDroplets(ctx, dr.client)
 	if err != nil {
 		log.Println("Error while listing droplets", err)
+		return err
+	}
+	dr.activeDroplets = activeDroplets
+	log.Println("active droplets:", len(activeDroplets))
+
+	activeVolumes, err := dolocal.ListVolumes(ctx, dr.client)
+	if err != nil {
+		log.Println("Error while listing volumes", err)
 		return err
 	}
 
@@ -97,7 +96,7 @@ func (dr *DropletReconciler) Reconcile(ctx context.Context) error {
 	return nil
 }
 
-func (dr *DropletReconciler) ReconcilePeripherals(context.Context, actionsByID) error {
+func (dr *DropletReconciler) SecondaryReconcile(context.Context, actionsByID) error {
 	return nil
 }
 
