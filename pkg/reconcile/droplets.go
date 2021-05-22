@@ -23,22 +23,6 @@ type DropletReconciler struct {
 
 var _ ObjectReconciler = &DropletReconciler{}
 
-func (dr *DropletReconciler) Populate(ctx context.Context) error {
-	err := dr.SetActiveObjects(ctx)
-	if err != nil {
-		return err
-	}
-
-	dr.SetObjectsToUpdateAndCreate()
-	dr.SetObjectsToDelete()
-
-	log.Println("active droplets to delete:", dr.dropletsToDelete)
-	log.Println("gitdrops droplets to update:", dr.dropletsToUpdate)
-	log.Println("gitdrops droplets to create:", dr.dropletsToCreate)
-
-	return nil
-}
-
 func (dr *DropletReconciler) SetActiveObjects(ctx context.Context) error {
 	activeDroplets, err := dolocal.ListDroplets(ctx, dr.client)
 	if err != nil {

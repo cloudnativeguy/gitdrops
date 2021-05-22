@@ -21,7 +21,6 @@ const (
 )
 
 type ObjectReconciler interface {
-	Populate(context.Context) error
 	Reconcile(context.Context) error
 	SecondaryReconcile(context.Context, actionsByID) error
 	SetActiveObjects(context.Context) error
@@ -63,22 +62,38 @@ func NewReconciler(ctx context.Context) (Reconciler, error) {
 		client:                    client,
 		localVolumeCreateRequests: gitDrops.Volumes,
 	}
-	err = volumeReconciler.Populate(ctx)
+	activeVolumes, err := dolocal.ListVolumes(ctx, volumeReconciler.client)
 	if err != nil {
-		log.Println(err)
+		log.Println("Error while listing volumes", err)
 		return Reconciler{}, err
 	}
+
+	volumeReconciler.activeVolumes = activeVolumes
+	volumeReconciler.SetObjectsToUpdateAndCreate()
+	volumeReconciler.SetObjectsToDelete()
+
+	log.Println("active volumes:", len(activeVolumes))
+	log.Println("active volumes to delete:", volumeReconciler.volumesToDelete)
+	log.Println("gitdrops volumes to update:", volumeReconciler.volumesToUpdate)
+	log.Println("gitdrops volumes to create:", volumeReconciler.volumesToCreate)
 
 	dropletReconciler := &DropletReconciler{
 		privileges:                 gitDrops.Privileges,
 		client:                     client,
 		localDropletCreateRequests: gitDrops.Droplets,
 	}
-	err = dropletReconciler.Populate(ctx)
+	err = dropletReconciler.SetActiveObjects(ctx)
 	if err != nil {
-		log.Println(err)
 		return Reconciler{}, err
 	}
+
+	dropletReconciler.SetObjectsToUpdateAndCreate()
+	dropletReconciler.SetObjectsToDelete()
+
+	log.Println("active droplets:", len(activeVolumes))
+	log.Println("active droplets to delete:", dropletReconciler.dropletsToDelete)
+	log.Println("gitdrops droplets to update:", dropletReconciler.dropletsToUpdate)
+	log.Println("gitdrops droplets to create:", dropletReconciler.dropletsToCreate)
 
 	return Reconciler{
 		volumeReconciler:  volumeReconciler,
@@ -107,6 +122,9 @@ func (r *Reconciler) Reconcile(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
+	// pass objects to update from droplet reconciler to volume reconciler
+	// as they now contain actions for volumes to attac/detach from droplets
+	// based on droplet reconciliation
 	r.dropletReconciler.SetObjectsToUpdateAndCreate()
 	objectsToUpdate := r.dropletReconciler.GetObjectsToUpdate()
 	err = r.volumeReconciler.SecondaryReconcile(ctx, objectsToUpdate)

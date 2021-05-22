@@ -22,25 +22,6 @@ type VolumeReconciler struct {
 
 var _ ObjectReconciler = &VolumeReconciler{}
 
-func (vr *VolumeReconciler) Populate(ctx context.Context) error {
-	activeVolumes, err := dolocal.ListVolumes(ctx, vr.client)
-	if err != nil {
-		log.Println("Error while listing volumes", err)
-		return err
-	}
-
-	vr.activeVolumes = activeVolumes
-	vr.SetObjectsToUpdateAndCreate()
-	vr.SetObjectsToDelete()
-
-	log.Println("active volumes:", len(activeVolumes))
-	log.Println("active volumes to delete:", vr.volumesToDelete)
-	log.Println("gitdrops volumes to update:", vr.volumesToUpdate)
-	log.Println("gitdrops volumes to create:", vr.volumesToCreate)
-
-	return nil
-}
-
 func (vr *VolumeReconciler) Reconcile(ctx context.Context) error {
 	if vr.privileges.Create {
 		err := vr.CreateObjects(ctx)
