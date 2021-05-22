@@ -5,26 +5,26 @@ import (
 	"errors"
 	"log"
 
-	"github.com/nolancon/gitdrops/pkg/dolocal"
+	"github.com/nolancon/gitdrops/pkg/gitdrops"
 
 	"github.com/digitalocean/godo"
 )
 
 type DropletReconciler struct {
-	privileges                 dolocal.Privileges
-	client                     *godo.Client
-	activeDroplets             []godo.Droplet
-	localDropletCreateRequests []dolocal.LocalDropletCreateRequest
-	dropletsToCreate           []dolocal.LocalDropletCreateRequest
-	dropletsToUpdate           actionsByID
-	dropletsToDelete           []int
-	volumeNameToID             map[string]string
+	privileges       gitdrops.Privileges
+	client           *godo.Client
+	activeDroplets   []godo.Droplet
+	gitdropsDroplets []gitdrops.Droplet
+	dropletsToCreate []gitdrops.Droplet
+	dropletsToUpdate actionsByID
+	dropletsToDelete []int
+	volumeNameToID   map[string]string
 }
 
 var _ ObjectReconciler = &DropletReconciler{}
 
 func (dr *DropletReconciler) SetActiveObjects(ctx context.Context) error {
-	activeDroplets, err := dolocal.ListDroplets(ctx, dr.client)
+	activeDroplets, err := gitdrops.ListDroplets(ctx, dr.client)
 	if err != nil {
 		log.Println("Error while listing droplets", err)
 		return err
@@ -32,7 +32,7 @@ func (dr *DropletReconciler) SetActiveObjects(ctx context.Context) error {
 	dr.activeDroplets = activeDroplets
 	log.Println("active droplets:", len(activeDroplets))
 
-	activeVolumes, err := dolocal.ListVolumes(ctx, dr.client)
+	activeVolumes, err := gitdrops.ListVolumes(ctx, dr.client)
 	if err != nil {
 		log.Println("Error while listing volumes", err)
 		return err
@@ -84,54 +84,54 @@ func (dr *DropletReconciler) SecondaryReconcile(context.Context, actionsByID) er
 	return nil
 }
 
-func (dr *DropletReconciler) translateDropletCreateRequest(localDropletCreateRequest dolocal.LocalDropletCreateRequest) (*godo.DropletCreateRequest, error) {
+func (dr *DropletReconciler) translateDropletCreateRequest(gitdropsDroplet gitdrops.Droplet) (*godo.DropletCreateRequest, error) {
 	createRequest := &godo.DropletCreateRequest{}
-	if localDropletCreateRequest.Name == "" {
+	if gitdropsDroplet.Name == "" {
 		return createRequest, errors.New("droplet name not specified")
 	}
-	if localDropletCreateRequest.Region == "" {
+	if gitdropsDroplet.Region == "" {
 		return createRequest, errors.New("droplet region not specified")
 	}
-	if localDropletCreateRequest.Size == "" {
+	if gitdropsDroplet.Size == "" {
 		return createRequest, errors.New("droplet size not specified")
 	}
-	if localDropletCreateRequest.Image == "" {
+	if gitdropsDroplet.Image == "" {
 		return createRequest, errors.New("droplet image not specified")
 	}
-	createRequest.Name = localDropletCreateRequest.Name
-	createRequest.Region = localDropletCreateRequest.Region
-	createRequest.Size = localDropletCreateRequest.Size
+	createRequest.Name = gitdropsDroplet.Name
+	createRequest.Region = gitdropsDroplet.Region
+	createRequest.Size = gitdropsDroplet.Size
 	dropletImage := godo.DropletCreateImage{}
-	dropletImage.Slug = localDropletCreateRequest.Image
+	dropletImage.Slug = gitdropsDroplet.Image
 	createRequest.Image = dropletImage
 
-	if len(localDropletCreateRequest.SSHKeyFingerprint) != 0 {
-		dropletCreateSSHKey := godo.DropletCreateSSHKey{Fingerprint: localDropletCreateRequest.SSHKeyFingerprint}
+	if len(gitdropsDroplet.SSHKeyFingerprint) != 0 {
+		dropletCreateSSHKey := godo.DropletCreateSSHKey{Fingerprint: gitdropsDroplet.SSHKeyFingerprint}
 		dropletCreateSSHKeys := make([]godo.DropletCreateSSHKey, 0)
 		dropletCreateSSHKeys = append(dropletCreateSSHKeys, dropletCreateSSHKey)
 		createRequest.SSHKeys = dropletCreateSSHKeys
 	}
 
-	if localDropletCreateRequest.VPCUUID != "" {
-		createRequest.VPCUUID = localDropletCreateRequest.VPCUUID
+	if gitdropsDroplet.VPCUUID != "" {
+		createRequest.VPCUUID = gitdropsDroplet.VPCUUID
 	}
 
-	if len(localDropletCreateRequest.Volumes) != 0 {
+	if len(gitdropsDroplet.Volumes) != 0 {
 		dropletCreateVolumes := make([]godo.DropletCreateVolume, 0)
-		for _, vol := range localDropletCreateRequest.Volumes {
+		for _, vol := range gitdropsDroplet.Volumes {
 			dropletCreateVolume := godo.DropletCreateVolume{ID: dr.volumeNameToID[vol]}
 			dropletCreateVolumes = append(dropletCreateVolumes, dropletCreateVolume)
 		}
 		createRequest.Volumes = dropletCreateVolumes
 	}
-	if len(localDropletCreateRequest.Tags) != 0 {
-		createRequest.Tags = localDropletCreateRequest.Tags
+	if len(gitdropsDroplet.Tags) != 0 {
+		createRequest.Tags = gitdropsDroplet.Tags
 	}
-	if localDropletCreateRequest.VPCUUID != "" {
-		createRequest.VPCUUID = localDropletCreateRequest.VPCUUID
+	if gitdropsDroplet.VPCUUID != "" {
+		createRequest.VPCUUID = gitdropsDroplet.VPCUUID
 	}
-	if localDropletCreateRequest.UserData.Data != "" {
-		createRequest.UserData = localDropletCreateRequest.UserData.Data
+	if gitdropsDroplet.UserData.Data != "" {
+		createRequest.UserData = gitdropsDroplet.UserData.Data
 	}
 	return createRequest, nil
 
@@ -140,19 +140,19 @@ func (dr *DropletReconciler) translateDropletCreateRequest(localDropletCreateReq
 // dropletsToUpdateCreate poulates DropletReconciler with two lists:
 // * dropletsToUpdate: dropletActionsByID of droplets that are active on DO and are defined in
 // gitdrops.yaml, but the active droplets are no longer in sync with the local gitdrops version.
-// * dropletsToCreate: LocalDropletCreateRequests of droplets defined in gitdrops.yaml that are NOT
+// * dropletsToCreate: Droplets of droplets defined in gitdrops.yaml that are NOT
 // active on DO and therefore should be created.
 func (dr *DropletReconciler) SetObjectsToUpdateAndCreate() {
-	dropletsToCreate := make([]dolocal.LocalDropletCreateRequest, 0)
+	dropletsToCreate := make([]gitdrops.Droplet, 0)
 	dropletActionsByID := make(actionsByID)
-	for _, localDropletCreateRequest := range dr.localDropletCreateRequests {
+	for _, gitdropsDroplet := range dr.gitdropsDroplets {
 		dropletIsActive := false
 		for _, activeDroplet := range dr.activeDroplets {
-			if localDropletCreateRequest.Name == activeDroplet.Name {
+			if gitdropsDroplet.Name == activeDroplet.Name {
 				// droplet already exists, check for change in request
-				dropletActions := getDropletActions(localDropletCreateRequest, activeDroplet)
-				dropletActions = append(dropletActions, dr.volumesToDetach(activeDroplet, localDropletCreateRequest)...)
-				dropletActions = append(dropletActions, dr.volumesToAttach(activeDroplet, localDropletCreateRequest)...)
+				dropletActions := getDropletActions(gitdropsDroplet, activeDroplet)
+				dropletActions = append(dropletActions, dr.volumesToDetach(activeDroplet, gitdropsDroplet)...)
+				dropletActions = append(dropletActions, dr.volumesToAttach(activeDroplet, gitdropsDroplet)...)
 				if len(dropletActions) != 0 {
 					dropletActionsByID[activeDroplet.ID] = dropletActions
 				}
@@ -162,8 +162,8 @@ func (dr *DropletReconciler) SetObjectsToUpdateAndCreate() {
 		}
 		if !dropletIsActive {
 			//create droplet from local request
-			log.Println("droplet not active, create droplet ", localDropletCreateRequest)
-			dropletsToCreate = append(dropletsToCreate, localDropletCreateRequest)
+			log.Println("droplet not active, create droplet ", gitdropsDroplet)
+			dropletsToCreate = append(dropletsToCreate, gitdropsDroplet)
 		}
 	}
 	dr.dropletsToUpdate = dropletActionsByID
@@ -178,8 +178,8 @@ func (dr *DropletReconciler) SetObjectsToDelete() {
 
 	for _, activeDroplet := range dr.activeDroplets {
 		activeDropletInSpec := false
-		for _, localDropletCreateRequest := range dr.localDropletCreateRequests {
-			if localDropletCreateRequest.Name == activeDroplet.Name {
+		for _, gitdropsDroplet := range dr.gitdropsDroplets {
+			if gitdropsDroplet.Name == activeDroplet.Name {
 				activeDropletInSpec = true
 				continue
 			}
@@ -192,23 +192,23 @@ func (dr *DropletReconciler) SetObjectsToDelete() {
 	dr.dropletsToDelete = dropletsToDelete
 }
 
-func getDropletActions(localDropletCreateRequest dolocal.LocalDropletCreateRequest, activeDroplet godo.Droplet) []action {
+func getDropletActions(gitdropsDroplet gitdrops.Droplet, activeDroplet godo.Droplet) []action {
 	var dropletActions []action
-	if activeDroplet.Size != nil && activeDroplet.Size.Slug != localDropletCreateRequest.Size {
+	if activeDroplet.Size != nil && activeDroplet.Size.Slug != gitdropsDroplet.Size {
 		log.Println("droplet", activeDroplet.Name, " size has been updated in gitdrops.yaml")
 
 		dropletAction := action{
 			action: resize,
-			value:  localDropletCreateRequest.Size,
+			value:  gitdropsDroplet.Size,
 		}
 		dropletActions = append(dropletActions, dropletAction)
 
 	}
-	if activeDroplet.Image != nil && activeDroplet.Image.Slug != localDropletCreateRequest.Image {
+	if activeDroplet.Image != nil && activeDroplet.Image.Slug != gitdropsDroplet.Image {
 		log.Println("droplet", activeDroplet.Name, "image  has been updated in gitdrops.yaml")
 		dropletAction := action{
 			action: rebuild,
-			value:  localDropletCreateRequest.Image,
+			value:  gitdropsDroplet.Image,
 		}
 		dropletActions = append(dropletActions, dropletAction)
 	}
@@ -217,12 +217,12 @@ func getDropletActions(localDropletCreateRequest dolocal.LocalDropletCreateReque
 }
 
 // volumesToDetach returns a slice of actions{action: detach, value: <volume-id>}
-func (dr *DropletReconciler) volumesToDetach(activeDroplet godo.Droplet, localDropletCreateRequest dolocal.LocalDropletCreateRequest) []action {
+func (dr *DropletReconciler) volumesToDetach(activeDroplet godo.Droplet, gitdropsDroplet gitdrops.Droplet) []action {
 	actions := make([]action, 0)
 	for _, activeDropletVolumeID := range activeDroplet.VolumeIDs {
 		volumeFound := false
-		for _, localDropletCreateRequestVolume := range localDropletCreateRequest.Volumes {
-			if dr.volumeNameToID[localDropletCreateRequestVolume] == activeDropletVolumeID {
+		for _, gitdropsDropletVolume := range gitdropsDroplet.Volumes {
+			if dr.volumeNameToID[gitdropsDropletVolume] == activeDropletVolumeID {
 				volumeFound = true
 				continue
 			}
@@ -240,12 +240,12 @@ func (dr *DropletReconciler) volumesToDetach(activeDroplet godo.Droplet, localDr
 }
 
 // volumesToAttach returns a slice of actions{action: attach, value: <volume-id>}
-func (dr *DropletReconciler) volumesToAttach(activeDroplet godo.Droplet, localDropletCreateRequest dolocal.LocalDropletCreateRequest) []action {
+func (dr *DropletReconciler) volumesToAttach(activeDroplet godo.Droplet, gitdropsDroplet gitdrops.Droplet) []action {
 	actions := make([]action, 0)
-	for _, localDropletCreateRequestVolume := range localDropletCreateRequest.Volumes {
+	for _, gitdropsDropletVolume := range gitdropsDroplet.Volumes {
 		volumeFound := false
 		for _, activeDropletVolumeID := range activeDroplet.VolumeIDs {
-			if dr.volumeNameToID[localDropletCreateRequestVolume] == activeDropletVolumeID {
+			if dr.volumeNameToID[gitdropsDropletVolume] == activeDropletVolumeID {
 				volumeFound = true
 				continue
 			}
@@ -253,10 +253,10 @@ func (dr *DropletReconciler) volumesToAttach(activeDroplet godo.Droplet, localDr
 		}
 		if !volumeFound {
 			// create attach action for volume
-			log.Println("volume", localDropletCreateRequestVolume, "not attached, attach to droplet")
+			log.Println("volume", gitdropsDropletVolume, "not attached, attach to droplet")
 			action := action{
 				action: attach,
-				value:  dr.volumeNameToID[localDropletCreateRequestVolume],
+				value:  dr.volumeNameToID[gitdropsDropletVolume],
 			}
 			actions = append(actions, action)
 		}
@@ -270,7 +270,7 @@ func (dr *DropletReconciler) GetObjectsToUpdate() actionsByID {
 
 func (dr *DropletReconciler) DeleteObjects(ctx context.Context) error {
 	for _, id := range dr.dropletsToDelete {
-		err := dolocal.DeleteDroplet(ctx, dr.client, id)
+		err := gitdrops.DeleteDroplet(ctx, dr.client, id)
 		if err != nil {
 			log.Println("error during delete request for droplet ", id, " error: ", err)
 			return err
@@ -286,7 +286,7 @@ func (dr *DropletReconciler) CreateObjects(ctx context.Context) error {
 			log.Println("error converting gitdrops.yaml to droplet create request:")
 			return err
 		}
-		err = dolocal.CreateDroplet(ctx, dr.client, dropletCreateRequest)
+		err = gitdrops.CreateDroplet(ctx, dr.client, dropletCreateRequest)
 		if err != nil {
 			log.Println("error creating droplet ", dropletToCreate.Name)
 			return err
@@ -299,7 +299,7 @@ func (dr *DropletReconciler) CreateObjects(ctx context.Context) error {
 func (dr *DropletReconciler) UpdateObjects(ctx context.Context) error {
 	for id, dropletActions := range dr.dropletsToUpdate {
 		for _, dropletAction := range dropletActions {
-			err := dolocal.UpdateDroplet(ctx, dr.client, id.(int), dropletAction.action, dropletAction.value.(string))
+			err := gitdrops.UpdateDroplet(ctx, dr.client, id.(int), dropletAction.action, dropletAction.value.(string))
 			if err != nil {
 				log.Println("error during action request for droplet ", id, " error: ", err)
 				// we do not return here as there may be more actions to complete

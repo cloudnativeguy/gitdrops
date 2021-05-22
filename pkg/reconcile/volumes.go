@@ -5,19 +5,19 @@ import (
 	"errors"
 	"log"
 
-	"github.com/nolancon/gitdrops/pkg/dolocal"
+	"github.com/nolancon/gitdrops/pkg/gitdrops"
 
 	"github.com/digitalocean/godo"
 )
 
 type VolumeReconciler struct {
-	privileges                dolocal.Privileges
-	client                    *godo.Client
-	activeVolumes             []godo.Volume
-	localVolumeCreateRequests []dolocal.LocalVolumeCreateRequest
-	volumesToCreate           []dolocal.LocalVolumeCreateRequest
-	volumesToUpdate           actionsByID
-	volumesToDelete           []string
+	privileges      gitdrops.Privileges
+	client          *godo.Client
+	activeVolumes   []godo.Volume
+	gitdropsVolumes []gitdrops.Volume
+	volumesToCreate []gitdrops.Volume
+	volumesToUpdate actionsByID
+	volumesToDelete []string
 }
 
 var _ ObjectReconciler = &VolumeReconciler{}
@@ -46,7 +46,7 @@ func (vr *VolumeReconciler) Reconcile(ctx context.Context) error {
 }
 
 func (vr *VolumeReconciler) SetActiveObjects(ctx context.Context) error {
-	activeVolumes, err := dolocal.ListVolumes(ctx, vr.client)
+	activeVolumes, err := gitdrops.ListVolumes(ctx, vr.client)
 	if err != nil {
 		log.Println("Error while listing volumes", err)
 		return err
@@ -80,20 +80,20 @@ func (vr *VolumeReconciler) SecondaryReconcile(ctx context.Context, objectsToUpd
 	return nil
 }
 
-func translateVolumeCreateRequest(localVolumeCreateRequest dolocal.LocalVolumeCreateRequest) (*godo.VolumeCreateRequest, error) {
+func translateVolumeCreateRequest(gitdropsVolume gitdrops.Volume) (*godo.VolumeCreateRequest, error) {
 	createRequest := &godo.VolumeCreateRequest{}
-	if localVolumeCreateRequest.Name == "" {
+	if gitdropsVolume.Name == "" {
 		return createRequest, errors.New("volume name not specified")
 	}
-	if localVolumeCreateRequest.Region == "" {
+	if gitdropsVolume.Region == "" {
 		return createRequest, errors.New("volume region not specified")
 	}
-	if localVolumeCreateRequest.SizeGigaBytes == 0 {
+	if gitdropsVolume.SizeGigaBytes == 0 {
 		return createRequest, errors.New("volume sizeGigaBytes not specified")
 	}
-	createRequest.Name = localVolumeCreateRequest.Name
-	createRequest.Region = localVolumeCreateRequest.Region
-	createRequest.SizeGigaBytes = localVolumeCreateRequest.SizeGigaBytes
+	createRequest.Name = gitdropsVolume.Name
+	createRequest.Region = gitdropsVolume.Region
+	createRequest.SizeGigaBytes = gitdropsVolume.SizeGigaBytes
 	return createRequest, nil
 
 }
@@ -101,17 +101,17 @@ func translateVolumeCreateRequest(localVolumeCreateRequest dolocal.LocalVolumeCr
 // SetObjectsToUpdateCreate populates VolumeReconciler with two lists:
 // * volumesToUpdate: volumeActionsByID of volumes that are active on DO and are defined in
 // gitdrops.yaml, but the active volumes are no longer in sync with the local gitdrops version.
-// * volumesToCreate: LocalVolumeCreateRequests of volumes defined in gitdrops.yaml that are NOT
+// * volumesToCreate: Volumes of volumes defined in gitdrops.yaml that are NOT
 // active on DO and therefore should be created.
 func (vr *VolumeReconciler) SetObjectsToUpdateAndCreate() {
-	volumesToCreate := make([]dolocal.LocalVolumeCreateRequest, 0)
+	volumesToCreate := make([]gitdrops.Volume, 0)
 	volumeActionsByID := make(actionsByID)
-	for _, localVolumeCreateRequest := range vr.localVolumeCreateRequests {
+	for _, gitdropsVolume := range vr.gitdropsVolumes {
 		volumeIsActive := false
 		for _, activeVolume := range vr.activeVolumes {
-			if localVolumeCreateRequest.Name == activeVolume.Name {
+			if gitdropsVolume.Name == activeVolume.Name {
 				//volume already exists, check for change in request
-				volumeActions := getVolumeActions(localVolumeCreateRequest, activeVolume)
+				volumeActions := getVolumeActions(gitdropsVolume, activeVolume)
 				if len(volumeActions) != 0 {
 					volumeActionsByID[activeVolume.ID] = volumeActions
 				}
@@ -121,8 +121,8 @@ func (vr *VolumeReconciler) SetObjectsToUpdateAndCreate() {
 		}
 		if !volumeIsActive {
 			//create volume from local request
-			log.Println("volume not active, create volume ", localVolumeCreateRequest)
-			volumesToCreate = append(volumesToCreate, localVolumeCreateRequest)
+			log.Println("volume not active, create volume ", gitdropsVolume)
+			volumesToCreate = append(volumesToCreate, gitdropsVolume)
 		}
 	}
 	vr.volumesToUpdate = volumeActionsByID
@@ -137,8 +137,8 @@ func (vr *VolumeReconciler) SetObjectsToDelete() {
 
 	for _, activeVolume := range vr.activeVolumes {
 		activeVolumeInSpec := false
-		for _, localVolumeCreateRequest := range vr.localVolumeCreateRequests {
-			if localVolumeCreateRequest.Name == activeVolume.Name {
+		for _, gitdropsVolume := range vr.gitdropsVolumes {
+			if gitdropsVolume.Name == activeVolume.Name {
 				activeVolumeInSpec = true
 				continue
 			}
@@ -155,14 +155,14 @@ func (vr *VolumeReconciler) GetObjectsToUpdate() actionsByID {
 	return vr.volumesToUpdate
 }
 
-func getVolumeActions(localVolumeCreateRequest dolocal.LocalVolumeCreateRequest, activeVolume godo.Volume) []action {
+func getVolumeActions(gitdropsVolume gitdrops.Volume, activeVolume godo.Volume) []action {
 	var volumeActions []action
-	if activeVolume.SizeGigaBytes != 0 && activeVolume.SizeGigaBytes != localVolumeCreateRequest.SizeGigaBytes {
+	if activeVolume.SizeGigaBytes != 0 && activeVolume.SizeGigaBytes != gitdropsVolume.SizeGigaBytes {
 		log.Println("volume", activeVolume.Name, "size has been updated in gitdrops.yaml")
 
 		volumeAction := action{
 			action: resize,
-			value:  localVolumeCreateRequest.SizeGigaBytes,
+			value:  gitdropsVolume.SizeGigaBytes,
 		}
 		volumeActions = append(volumeActions, volumeAction)
 
@@ -172,7 +172,7 @@ func getVolumeActions(localVolumeCreateRequest dolocal.LocalVolumeCreateRequest,
 
 func (vr *VolumeReconciler) DeleteObjects(ctx context.Context) error {
 	for _, id := range vr.volumesToDelete {
-		err := dolocal.DeleteVolume(ctx, vr.client, id)
+		err := gitdrops.DeleteVolume(ctx, vr.client, id)
 		if err != nil {
 			log.Println("error during delete request for volume ", id, " error: ", err)
 			return err
@@ -188,7 +188,7 @@ func (vr *VolumeReconciler) CreateObjects(ctx context.Context) error {
 			log.Println("error converting gitdrops.yaml to volume create request:")
 			return err
 		}
-		err = dolocal.CreateVolume(ctx, vr.client, volumeCreateRequest)
+		err = gitdrops.CreateVolume(ctx, vr.client, volumeCreateRequest)
 		if err != nil {
 			log.Println("error creating volume ", volumeToCreate.Name)
 			return err
@@ -203,7 +203,7 @@ func (vr *VolumeReconciler) UpdateObjects(ctx context.Context) error {
 		for _, volumeAction := range volumeActions {
 			switch volumeAction.action {
 			case resize:
-				err := dolocal.ResizeVolume(ctx, vr.client, id.(string), vr.findVolumeRegion(id.(string)), volumeAction.value)
+				err := gitdrops.ResizeVolume(ctx, vr.client, id.(string), vr.findVolumeRegion(id.(string)), volumeAction.value)
 				if err != nil {
 					log.Println("error during resize action request for volume ", id, " error: ", err)
 					// we do not return here as there may be more actions to complete
@@ -213,7 +213,7 @@ func (vr *VolumeReconciler) UpdateObjects(ctx context.Context) error {
 				// in this case, 'id' is that of the droplet and 'value' is the volume
 				// name. This is because this action was detected and created by the
 				// droplet reconciler.
-				err := dolocal.AttachVolume(ctx, vr.client, volumeAction.value.(string), id.(int))
+				err := gitdrops.AttachVolume(ctx, vr.client, volumeAction.value.(string), id.(int))
 				if err != nil {
 					log.Println("error during attach action request for volume ", volumeAction.value.(string), " error: ", err)
 
@@ -222,7 +222,7 @@ func (vr *VolumeReconciler) UpdateObjects(ctx context.Context) error {
 				// in this case, 'id' is that of the droplet and 'value' is the volume
 				// id. This is because this action was detected and created by the
 				// droplet reconciler.
-				err := dolocal.DetachVolume(ctx, vr.client, volumeAction.value.(string), id.(int))
+				err := gitdrops.DetachVolume(ctx, vr.client, volumeAction.value.(string), id.(int))
 				if err != nil {
 					log.Println("error during detach action request for volume ", volumeAction.value.(string), " error: ", err)
 

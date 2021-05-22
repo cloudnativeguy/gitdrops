@@ -1,9 +1,9 @@
-package dolocal
+package gitdrops
 
 type GitDrops struct {
-	Privileges Privileges                  `yaml:"privileges"`
-	Droplets   []LocalDropletCreateRequest `yaml:"droplets"`
-	Volumes    []LocalVolumeCreateRequest  `yaml:"volumes"`
+	Privileges Privileges `yaml:"privileges"`
+	Droplets   []Droplet  `yaml:"droplets"`
+	Volumes    []Volume   `yaml:"volumes"`
 }
 
 type Privileges struct {
@@ -12,9 +12,9 @@ type Privileges struct {
 	Delete bool `yaml:"delete"`
 }
 
-// LocalDropletCreateRequest is a simplified representation of godo.DropletCreateRequest.
+// Droplet is a simplified representation of godo.DropletCreateRequest.
 // It is only a single level deep to enable unmarshalling from gitdrops.yaml.
-type LocalDropletCreateRequest struct {
+type Droplet struct {
 	Name              string   `yaml:"name"`
 	Region            string   `yaml:"region"`
 	Size              string   `yaml:"size"`
@@ -30,7 +30,7 @@ type LocalDropletCreateRequest struct {
 }
 
 // TODO
-type LocalVolumeCreateRequest struct {
+type Volume struct {
 	Name          string `yaml:"name"`
 	Region        string `yaml:"region"`
 	SizeGigaBytes int64  `yaml:"sizeGigaBytes"`

@@ -5,7 +5,7 @@ import (
 	"log"
 	"os"
 
-	"github.com/nolancon/gitdrops/pkg/dolocal"
+	"github.com/nolancon/gitdrops/pkg/gitdrops"
 
 	"github.com/digitalocean/godo"
 )
@@ -49,7 +49,7 @@ type action struct {
 }
 
 func NewReconciler(ctx context.Context) (Reconciler, error) {
-	gitDrops, err := dolocal.ReadGitDrops()
+	gitDrops, err := gitdrops.ReadGitDrops()
 	if err != nil {
 		log.Println(err)
 		return Reconciler{}, err
@@ -58,11 +58,11 @@ func NewReconciler(ctx context.Context) (Reconciler, error) {
 	client := godo.NewFromToken(os.Getenv(digitaloceanToken))
 
 	volumeReconciler := &VolumeReconciler{
-		privileges:                gitDrops.Privileges,
-		client:                    client,
-		localVolumeCreateRequests: gitDrops.Volumes,
+		privileges:      gitDrops.Privileges,
+		client:          client,
+		gitdropsVolumes: gitDrops.Volumes,
 	}
-	activeVolumes, err := dolocal.ListVolumes(ctx, volumeReconciler.client)
+	activeVolumes, err := gitdrops.ListVolumes(ctx, volumeReconciler.client)
 	if err != nil {
 		log.Println("Error while listing volumes", err)
 		return Reconciler{}, err
@@ -78,9 +78,9 @@ func NewReconciler(ctx context.Context) (Reconciler, error) {
 	log.Println("gitdrops volumes to create:", volumeReconciler.volumesToCreate)
 
 	dropletReconciler := &DropletReconciler{
-		privileges:                 gitDrops.Privileges,
-		client:                     client,
-		localDropletCreateRequests: gitDrops.Droplets,
+		privileges:       gitDrops.Privileges,
+		client:           client,
+		gitdropsDroplets: gitDrops.Droplets,
 	}
 	err = dropletReconciler.SetActiveObjects(ctx)
 	if err != nil {

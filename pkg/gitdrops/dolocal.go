@@ -1,4 +1,4 @@
-package dolocal
+package gitdrops
 
 import (
 	"context"
