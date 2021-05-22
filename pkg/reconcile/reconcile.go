@@ -20,21 +20,21 @@ const (
 	digitaloceanToken = "DIGITALOCEAN_TOKEN"
 )
 
-type ObjectReconciler interface {
-	Reconcile(context.Context) error
-	SecondaryReconcile(context.Context, actionsByID) error
-	SetActiveObjects(context.Context) error
-	SetObjectsToUpdateAndCreate()
-	SetObjectsToDelete()
-	GetObjectsToUpdate() actionsByID
-	DeleteObjects(context.Context) error
-	UpdateObjects(context.Context) error
-	CreateObjects(context.Context) error
+type objectReconciler interface {
+	reconcile(context.Context) error
+	secondaryReconcile(context.Context, actionsByID) error
+	setActiveObjects(context.Context) error
+	setObjectsToUpdateAndCreate()
+	setObjectsToDelete()
+	getObjectsToUpdate() actionsByID
+	deleteObjects(context.Context) error
+	updateObjects(context.Context) error
+	createObjects(context.Context) error
 }
 
 type Reconciler struct {
-	volumeReconciler  ObjectReconciler
-	dropletReconciler ObjectReconciler
+	volumeReconciler  objectReconciler
+	dropletReconciler objectReconciler
 }
 
 // actionsByID is a slice of actions to be taken on the object. The ID is that of the object
@@ -57,7 +57,7 @@ func NewReconciler(ctx context.Context) (Reconciler, error) {
 
 	client := godo.NewFromToken(os.Getenv(digitaloceanToken))
 
-	volumeReconciler := &VolumeReconciler{
+	volumeReconciler := &volumeReconciler{
 		privileges:      gitDrops.Privileges,
 		client:          client,
 		gitdropsVolumes: gitDrops.Volumes,
@@ -69,26 +69,26 @@ func NewReconciler(ctx context.Context) (Reconciler, error) {
 	}
 
 	volumeReconciler.activeVolumes = activeVolumes
-	volumeReconciler.SetObjectsToUpdateAndCreate()
-	volumeReconciler.SetObjectsToDelete()
+	volumeReconciler.setObjectsToUpdateAndCreate()
+	volumeReconciler.setObjectsToDelete()
 
 	log.Println("active volumes:", len(activeVolumes))
 	log.Println("active volumes to delete:", volumeReconciler.volumesToDelete)
 	log.Println("gitdrops volumes to update:", volumeReconciler.volumesToUpdate)
 	log.Println("gitdrops volumes to create:", volumeReconciler.volumesToCreate)
 
-	dropletReconciler := &DropletReconciler{
+	dropletReconciler := &dropletReconciler{
 		privileges:       gitDrops.Privileges,
 		client:           client,
 		gitdropsDroplets: gitDrops.Droplets,
 	}
-	err = dropletReconciler.SetActiveObjects(ctx)
+	err = dropletReconciler.setActiveObjects(ctx)
 	if err != nil {
 		return Reconciler{}, err
 	}
 
-	dropletReconciler.SetObjectsToUpdateAndCreate()
-	dropletReconciler.SetObjectsToDelete()
+	dropletReconciler.setObjectsToUpdateAndCreate()
+	dropletReconciler.setObjectsToDelete()
 
 	log.Println("active droplets:", len(activeVolumes))
 	log.Println("active droplets to delete:", dropletReconciler.dropletsToDelete)
@@ -103,13 +103,13 @@ func NewReconciler(ctx context.Context) (Reconciler, error) {
 
 func (r *Reconciler) Reconcile(ctx context.Context) error {
 	log.Println("begin initial volume reconciliation(create, resize)...")
-	err := r.volumeReconciler.Reconcile(ctx)
+	err := r.volumeReconciler.reconcile(ctx)
 	if err != nil {
 		return err
 	}
 	log.Println("initial volume reconciliation complete")
 	log.Println("begin droplet reconciliation(create, delete, resize, rebuild)...")
-	err = r.dropletReconciler.Reconcile(ctx)
+	err = r.dropletReconciler.reconcile(ctx)
 	if err != nil {
 		return err
 	}
@@ -118,16 +118,16 @@ func (r *Reconciler) Reconcile(ctx context.Context) error {
 
 	// re-set active objects in the droplet reconciler because the volumes have been
 	// reconciled and we need to search again for volume attach/detach actions.
-	err = r.dropletReconciler.SetActiveObjects(ctx)
+	err = r.dropletReconciler.setActiveObjects(ctx)
 	if err != nil {
 		return err
 	}
 	// pass objects to update from droplet reconciler to volume reconciler
 	// as they now contain actions for volumes to attac/detach from droplets
 	// based on droplet reconciliation
-	r.dropletReconciler.SetObjectsToUpdateAndCreate()
-	objectsToUpdate := r.dropletReconciler.GetObjectsToUpdate()
-	err = r.volumeReconciler.SecondaryReconcile(ctx, objectsToUpdate)
+	r.dropletReconciler.setObjectsToUpdateAndCreate()
+	objectsToUpdate := r.dropletReconciler.getObjectsToUpdate()
+	err = r.volumeReconciler.secondaryReconcile(ctx, objectsToUpdate)
 	if err != nil {
 		return err
 	}

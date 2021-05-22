@@ -10,7 +10,7 @@ import (
 	"github.com/digitalocean/godo"
 )
 
-type VolumeReconciler struct {
+type volumeReconciler struct {
 	privileges      gitdrops.Privileges
 	client          *godo.Client
 	activeVolumes   []godo.Volume
@@ -20,11 +20,11 @@ type VolumeReconciler struct {
 	volumesToDelete []string
 }
 
-var _ ObjectReconciler = &VolumeReconciler{}
+var _ objectReconciler = &volumeReconciler{}
 
-func (vr *VolumeReconciler) Reconcile(ctx context.Context) error {
+func (vr *volumeReconciler) reconcile(ctx context.Context) error {
 	if vr.privileges.Create {
-		err := vr.CreateObjects(ctx)
+		err := vr.createObjects(ctx)
 		if err != nil {
 			log.Println("error creating volume")
 			return err
@@ -33,7 +33,7 @@ func (vr *VolumeReconciler) Reconcile(ctx context.Context) error {
 		log.Println("gitdrops.yaml does not have create privileges")
 	}
 	if vr.privileges.Update {
-		err := vr.UpdateObjects(ctx)
+		err := vr.updateObjects(ctx)
 		if err != nil {
 			log.Println("error updating volume")
 			return err
@@ -45,7 +45,7 @@ func (vr *VolumeReconciler) Reconcile(ctx context.Context) error {
 	return nil
 }
 
-func (vr *VolumeReconciler) SetActiveObjects(ctx context.Context) error {
+func (vr *volumeReconciler) setActiveObjects(ctx context.Context) error {
 	activeVolumes, err := gitdrops.ListVolumes(ctx, vr.client)
 	if err != nil {
 		log.Println("Error while listing volumes", err)
@@ -55,9 +55,9 @@ func (vr *VolumeReconciler) SetActiveObjects(ctx context.Context) error {
 	return nil
 }
 
-func (vr *VolumeReconciler) SecondaryReconcile(ctx context.Context, objectsToUpdate actionsByID) error {
+func (vr *volumeReconciler) secondaryReconcile(ctx context.Context, objectsToUpdate actionsByID) error {
 	if vr.privileges.Delete {
-		err := vr.DeleteObjects(ctx)
+		err := vr.deleteObjects(ctx)
 		if err != nil {
 			log.Println("error deleting droplet")
 			return err
@@ -66,13 +66,13 @@ func (vr *VolumeReconciler) SecondaryReconcile(ctx context.Context, objectsToUpd
 		log.Println("gitdrops.yaml does not have delete privileges")
 	}
 
-	err := vr.SetActiveObjects(ctx)
+	err := vr.setActiveObjects(ctx)
 	if err != nil {
 		return err
 	}
 
 	vr.volumesToUpdate = objectsToUpdate
-	err = vr.UpdateObjects(ctx)
+	err = vr.updateObjects(ctx)
 	if err != nil {
 		return err
 	}
@@ -103,7 +103,7 @@ func translateVolumeCreateRequest(gitdropsVolume gitdrops.Volume) (*godo.VolumeC
 // gitdrops.yaml, but the active volumes are no longer in sync with the local gitdrops version.
 // * volumesToCreate: Volumes of volumes defined in gitdrops.yaml that are NOT
 // active on DO and therefore should be created.
-func (vr *VolumeReconciler) SetObjectsToUpdateAndCreate() {
+func (vr *volumeReconciler) setObjectsToUpdateAndCreate() {
 	volumesToCreate := make([]gitdrops.Volume, 0)
 	volumeActionsByID := make(actionsByID)
 	for _, gitdropsVolume := range vr.gitdropsVolumes {
@@ -132,7 +132,7 @@ func (vr *VolumeReconciler) SetObjectsToUpdateAndCreate() {
 // SetObjectToDelete populates VolumeReconciler with  a list of IDs for volumes that need
 // to be deleted upon reconciliation of gitdrops.yaml (ie these volumes are active but not present
 // in the spec)
-func (vr *VolumeReconciler) SetObjectsToDelete() {
+func (vr *volumeReconciler) setObjectsToDelete() {
 	volumesToDelete := make([]string, 0)
 
 	for _, activeVolume := range vr.activeVolumes {
@@ -151,7 +151,7 @@ func (vr *VolumeReconciler) SetObjectsToDelete() {
 	vr.volumesToDelete = volumesToDelete
 }
 
-func (vr *VolumeReconciler) GetObjectsToUpdate() actionsByID {
+func (vr *volumeReconciler) getObjectsToUpdate() actionsByID {
 	return vr.volumesToUpdate
 }
 
@@ -170,7 +170,7 @@ func getVolumeActions(gitdropsVolume gitdrops.Volume, activeVolume godo.Volume) 
 	return volumeActions
 }
 
-func (vr *VolumeReconciler) DeleteObjects(ctx context.Context) error {
+func (vr *volumeReconciler) deleteObjects(ctx context.Context) error {
 	for _, id := range vr.volumesToDelete {
 		err := gitdrops.DeleteVolume(ctx, vr.client, id)
 		if err != nil {
@@ -181,7 +181,7 @@ func (vr *VolumeReconciler) DeleteObjects(ctx context.Context) error {
 	return nil
 }
 
-func (vr *VolumeReconciler) CreateObjects(ctx context.Context) error {
+func (vr *volumeReconciler) createObjects(ctx context.Context) error {
 	for _, volumeToCreate := range vr.volumesToCreate {
 		volumeCreateRequest, err := translateVolumeCreateRequest(volumeToCreate)
 		if err != nil {
@@ -198,7 +198,7 @@ func (vr *VolumeReconciler) CreateObjects(ctx context.Context) error {
 	return nil
 }
 
-func (vr *VolumeReconciler) UpdateObjects(ctx context.Context) error {
+func (vr *volumeReconciler) updateObjects(ctx context.Context) error {
 	for id, volumeActions := range vr.volumesToUpdate {
 		for _, volumeAction := range volumeActions {
 			switch volumeAction.action {
@@ -234,16 +234,7 @@ func (vr *VolumeReconciler) UpdateObjects(ctx context.Context) error {
 	return nil
 }
 
-func (vr *VolumeReconciler) findVolumeIDByName(volName string) string {
-	for _, vol := range vr.activeVolumes {
-		if vol.Name == volName {
-			return vol.ID
-		}
-	}
-	return ""
-}
-
-func (vr *VolumeReconciler) findVolumeRegion(volID string) string {
+func (vr *volumeReconciler) findVolumeRegion(volID string) string {
 	for _, vol := range vr.activeVolumes {
 		if vol.ID == volID {
 			return vol.Region.Slug

@@ -9,8 +9,8 @@ import (
 	"github.com/digitalocean/godo"
 )
 
-func newTestDropletReconciler(privileges gitdrops.Privileges, client *godo.Client, activeDroplets []godo.Droplet, gitdropsDroplets []gitdrops.Droplet, volumeNameToID map[string]string) *DropletReconciler {
-	return &DropletReconciler{
+func newTestDropletReconciler(privileges gitdrops.Privileges, client *godo.Client, activeDroplets []godo.Droplet, gitdropsDroplets []gitdrops.Droplet, volumeNameToID map[string]string) *dropletReconciler {
+	return &dropletReconciler{
 		privileges:       privileges,
 		client:           client,
 		activeDroplets:   activeDroplets,
@@ -344,7 +344,7 @@ func TestSetDropletsToUpdateCreate(t *testing.T) {
 	for _, tc := range tcases {
 		dr := newTestDropletReconciler(gitdrops.Privileges{}, nil, tc.activeDroplets, tc.gitdropsDroplets, tc.volumeNameToID)
 
-		dr.SetObjectsToUpdateAndCreate()
+		dr.setObjectsToUpdateAndCreate()
 		if !reflect.DeepEqual(dr.dropletsToUpdate, tc.dropletsToUpdate) {
 			t.Errorf("DropletsToUpdate - Failed %v, expected: %v, got %v", tc.name, tc.dropletsToUpdate, dr.dropletsToUpdate)
 		}
@@ -355,7 +355,7 @@ func TestSetDropletsToUpdateCreate(t *testing.T) {
 	}
 }
 
-func TestActiveDropletsToDelete(t *testing.T) {
+func TestSetDropletsToDelete(t *testing.T) {
 	tcases := []struct {
 		name             string
 		activeDroplets   []godo.Droplet
@@ -476,7 +476,7 @@ func TestActiveDropletsToDelete(t *testing.T) {
 	for _, tc := range tcases {
 		dr := newTestDropletReconciler(gitdrops.Privileges{}, nil, tc.activeDroplets, tc.gitdropsDroplets, nil)
 
-		dr.SetObjectsToDelete()
+		dr.setObjectsToDelete()
 		if !reflect.DeepEqual(dr.dropletsToDelete, tc.dropletsToDelete) {
 			t.Errorf("Failed %v, expected: %v, got %v", tc.name, tc.dropletsToDelete, dr.dropletsToDelete)
 		}

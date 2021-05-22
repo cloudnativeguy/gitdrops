@@ -10,7 +10,7 @@ import (
 	"github.com/digitalocean/godo"
 )
 
-type DropletReconciler struct {
+type dropletReconciler struct {
 	privileges       gitdrops.Privileges
 	client           *godo.Client
 	activeDroplets   []godo.Droplet
@@ -21,9 +21,9 @@ type DropletReconciler struct {
 	volumeNameToID   map[string]string
 }
 
-var _ ObjectReconciler = &DropletReconciler{}
+var _ objectReconciler = &dropletReconciler{}
 
-func (dr *DropletReconciler) SetActiveObjects(ctx context.Context) error {
+func (dr *dropletReconciler) setActiveObjects(ctx context.Context) error {
 	activeDroplets, err := gitdrops.ListDroplets(ctx, dr.client)
 	if err != nil {
 		log.Println("Error while listing droplets", err)
@@ -47,9 +47,9 @@ func (dr *DropletReconciler) SetActiveObjects(ctx context.Context) error {
 	return nil
 }
 
-func (dr *DropletReconciler) Reconcile(ctx context.Context) error {
+func (dr *dropletReconciler) reconcile(ctx context.Context) error {
 	if dr.privileges.Delete {
-		err := dr.DeleteObjects(ctx)
+		err := dr.deleteObjects(ctx)
 		if err != nil {
 			log.Println("error deleting droplet")
 			return err
@@ -58,7 +58,7 @@ func (dr *DropletReconciler) Reconcile(ctx context.Context) error {
 		log.Println("gitdrops.yaml does not have delete privileges")
 	}
 	if dr.privileges.Create {
-		err := dr.CreateObjects(ctx)
+		err := dr.createObjects(ctx)
 		if err != nil {
 			log.Println("error creating droplet")
 			return err
@@ -68,7 +68,7 @@ func (dr *DropletReconciler) Reconcile(ctx context.Context) error {
 	}
 
 	if dr.privileges.Update {
-		err := dr.UpdateObjects(ctx)
+		err := dr.updateObjects(ctx)
 		if err != nil {
 			log.Println("error updating droplet")
 			return err
@@ -80,11 +80,11 @@ func (dr *DropletReconciler) Reconcile(ctx context.Context) error {
 	return nil
 }
 
-func (dr *DropletReconciler) SecondaryReconcile(context.Context, actionsByID) error {
+func (dr *dropletReconciler) secondaryReconcile(context.Context, actionsByID) error {
 	return nil
 }
 
-func (dr *DropletReconciler) translateDropletCreateRequest(gitdropsDroplet gitdrops.Droplet) (*godo.DropletCreateRequest, error) {
+func (dr *dropletReconciler) translateDropletCreateRequest(gitdropsDroplet gitdrops.Droplet) (*godo.DropletCreateRequest, error) {
 	createRequest := &godo.DropletCreateRequest{}
 	if gitdropsDroplet.Name == "" {
 		return createRequest, errors.New("droplet name not specified")
@@ -142,7 +142,7 @@ func (dr *DropletReconciler) translateDropletCreateRequest(gitdropsDroplet gitdr
 // gitdrops.yaml, but the active droplets are no longer in sync with the local gitdrops version.
 // * dropletsToCreate: Droplets of droplets defined in gitdrops.yaml that are NOT
 // active on DO and therefore should be created.
-func (dr *DropletReconciler) SetObjectsToUpdateAndCreate() {
+func (dr *dropletReconciler) setObjectsToUpdateAndCreate() {
 	dropletsToCreate := make([]gitdrops.Droplet, 0)
 	dropletActionsByID := make(actionsByID)
 	for _, gitdropsDroplet := range dr.gitdropsDroplets {
@@ -173,7 +173,7 @@ func (dr *DropletReconciler) SetObjectsToUpdateAndCreate() {
 // ObjectToDelete populates DropletReconciler with a list of IDs for droplets that need
 // to be deleted upon reconciliation of gitdrops.yaml (ie these droplets are active but not present
 // in the spec)
-func (dr *DropletReconciler) SetObjectsToDelete() {
+func (dr *dropletReconciler) setObjectsToDelete() {
 	dropletsToDelete := make([]int, 0)
 
 	for _, activeDroplet := range dr.activeDroplets {
@@ -217,7 +217,7 @@ func getDropletActions(gitdropsDroplet gitdrops.Droplet, activeDroplet godo.Drop
 }
 
 // volumesToDetach returns a slice of actions{action: detach, value: <volume-id>}
-func (dr *DropletReconciler) volumesToDetach(activeDroplet godo.Droplet, gitdropsDroplet gitdrops.Droplet) []action {
+func (dr *dropletReconciler) volumesToDetach(activeDroplet godo.Droplet, gitdropsDroplet gitdrops.Droplet) []action {
 	actions := make([]action, 0)
 	for _, activeDropletVolumeID := range activeDroplet.VolumeIDs {
 		volumeFound := false
@@ -240,7 +240,7 @@ func (dr *DropletReconciler) volumesToDetach(activeDroplet godo.Droplet, gitdrop
 }
 
 // volumesToAttach returns a slice of actions{action: attach, value: <volume-id>}
-func (dr *DropletReconciler) volumesToAttach(activeDroplet godo.Droplet, gitdropsDroplet gitdrops.Droplet) []action {
+func (dr *dropletReconciler) volumesToAttach(activeDroplet godo.Droplet, gitdropsDroplet gitdrops.Droplet) []action {
 	actions := make([]action, 0)
 	for _, gitdropsDropletVolume := range gitdropsDroplet.Volumes {
 		volumeFound := false
@@ -264,11 +264,11 @@ func (dr *DropletReconciler) volumesToAttach(activeDroplet godo.Droplet, gitdrop
 	return actions
 }
 
-func (dr *DropletReconciler) GetObjectsToUpdate() actionsByID {
+func (dr *dropletReconciler) getObjectsToUpdate() actionsByID {
 	return dr.dropletsToUpdate
 }
 
-func (dr *DropletReconciler) DeleteObjects(ctx context.Context) error {
+func (dr *dropletReconciler) deleteObjects(ctx context.Context) error {
 	for _, id := range dr.dropletsToDelete {
 		err := gitdrops.DeleteDroplet(ctx, dr.client, id)
 		if err != nil {
@@ -279,7 +279,7 @@ func (dr *DropletReconciler) DeleteObjects(ctx context.Context) error {
 	return nil
 }
 
-func (dr *DropletReconciler) CreateObjects(ctx context.Context) error {
+func (dr *dropletReconciler) createObjects(ctx context.Context) error {
 	for _, dropletToCreate := range dr.dropletsToCreate {
 		dropletCreateRequest, err := dr.translateDropletCreateRequest(dropletToCreate)
 		if err != nil {
@@ -296,7 +296,7 @@ func (dr *DropletReconciler) CreateObjects(ctx context.Context) error {
 	return nil
 }
 
-func (dr *DropletReconciler) UpdateObjects(ctx context.Context) error {
+func (dr *dropletReconciler) updateObjects(ctx context.Context) error {
 	for id, dropletActions := range dr.dropletsToUpdate {
 		for _, dropletAction := range dropletActions {
 			err := gitdrops.UpdateDroplet(ctx, dr.client, id.(int), dropletAction.action, dropletAction.value.(string))
