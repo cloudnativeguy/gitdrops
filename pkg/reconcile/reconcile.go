@@ -11,8 +11,6 @@ import (
 )
 
 const (
-	update            = "update"
-	create            = "create"
 	resize            = "resize"
 	rebuild           = "rebuild"
 	attach            = "attach"

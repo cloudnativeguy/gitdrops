@@ -8,8 +8,7 @@ import (
 )
 
 const (
-	shortDuration    = 10 * time.Second
-	gitdropsYamlPath = "./gitdrops.yaml"
+	shortDuration = 10 * time.Second
 )
 
 func main() {

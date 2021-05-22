@@ -2,7 +2,6 @@ package gitdrops
 
 import (
 	"context"
-	"errors"
 	"io/ioutil"
 	"log"
 
@@ -55,15 +54,16 @@ func ListDroplets(ctx context.Context, client *godo.Client) ([]godo.Droplet, err
 	for {
 		droplets := []godo.Droplet{}
 		resp := &godo.Response{}
-		err := errors.New("")
 		for i := 0; i < retries; i++ {
-			droplets, resp, err = client.Droplets.List(ctx, opt)
+			dropletsTmp, respTmp, err := client.Droplets.List(ctx, opt)
 			if err != nil {
 				log.Println("error listing droplets", err)
 				if i == retries-1 {
 					return list, err
 				}
 			} else {
+				droplets = dropletsTmp
+				resp = respTmp
 				break
 			}
 		}
@@ -165,15 +165,16 @@ func ListVolumes(ctx context.Context, client *godo.Client) ([]godo.Volume, error
 	for {
 		volumes := []godo.Volume{}
 		resp := &godo.Response{}
-		err := errors.New("")
 		for i := 0; i < retries; i++ {
-			volumes, resp, err = client.Storage.ListVolumes(ctx, opt)
+			volumesTmp, respTmp, err := client.Storage.ListVolumes(ctx, opt)
 			if err != nil {
 				log.Println("error listing volumes", err)
 				if i == retries-1 {
 					return list, err
 				}
 			} else {
+				volumes = volumesTmp
+				resp = respTmp
 				break
 			}
 		}
