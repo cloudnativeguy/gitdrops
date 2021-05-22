@@ -351,7 +351,6 @@ func TestSetDropletsToUpdateCreate(t *testing.T) {
 		if !reflect.DeepEqual(dr.dropletsToCreate, tc.dropletsToCreate) {
 			t.Errorf("DropletsToCreate - Failed %v, expected: %v, got %v", tc.name, tc.dropletsToCreate, dr.dropletsToCreate)
 		}
-
 	}
 }
 
@@ -480,6 +479,5 @@ func TestSetDropletsToDelete(t *testing.T) {
 		if !reflect.DeepEqual(dr.dropletsToDelete, tc.dropletsToDelete) {
 			t.Errorf("Failed %v, expected: %v, got %v", tc.name, tc.dropletsToDelete, dr.dropletsToDelete)
 		}
-
 	}
 }

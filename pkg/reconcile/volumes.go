@@ -95,7 +95,6 @@ func translateVolumeCreateRequest(gitdropsVolume gitdrops.Volume) (*godo.VolumeC
 	createRequest.Region = gitdropsVolume.Region
 	createRequest.SizeGigaBytes = gitdropsVolume.SizeGigaBytes
 	return createRequest, nil
-
 }
 
 // SetObjectsToUpdateCreate populates VolumeReconciler with two lists:
@@ -165,7 +164,6 @@ func getVolumeActions(gitdropsVolume gitdrops.Volume, activeVolume godo.Volume) 
 			value:  gitdropsVolume.SizeGigaBytes,
 		}
 		volumeActions = append(volumeActions, volumeAction)
-
 	}
 	return volumeActions
 }
@@ -193,7 +191,6 @@ func (vr *volumeReconciler) createObjects(ctx context.Context) error {
 			log.Println("error creating volume ", volumeToCreate.Name)
 			return err
 		}
-
 	}
 	return nil
 }
@@ -216,7 +213,6 @@ func (vr *volumeReconciler) updateObjects(ctx context.Context) error {
 				err := gitdrops.AttachVolume(ctx, vr.client, volumeAction.value.(string), id.(int))
 				if err != nil {
 					log.Println("error during attach action request for volume ", volumeAction.value.(string), " error: ", err)
-
 				}
 			case detach:
 				// in this case, 'id' is that of the droplet and 'value' is the volume
@@ -225,9 +221,7 @@ func (vr *volumeReconciler) updateObjects(ctx context.Context) error {
 				err := gitdrops.DetachVolume(ctx, vr.client, volumeAction.value.(string), id.(int))
 				if err != nil {
 					log.Println("error during detach action request for volume ", volumeAction.value.(string), " error: ", err)
-
 				}
-
 			}
 		}
 	}

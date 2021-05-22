@@ -150,7 +150,6 @@ func UpdateDroplet(ctx context.Context, client *godo.Client, id int, action, val
 				break
 			}
 		}
-
 	}
 	return nil
 }

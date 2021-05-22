@@ -134,7 +134,6 @@ func (dr *dropletReconciler) translateDropletCreateRequest(gitdropsDroplet gitdr
 		createRequest.UserData = gitdropsDroplet.UserData.Data
 	}
 	return createRequest, nil
-
 }
 
 // dropletsToUpdateCreate poulates DropletReconciler with two lists:
@@ -202,7 +201,6 @@ func getDropletActions(gitdropsDroplet gitdrops.Droplet, activeDroplet godo.Drop
 			value:  gitdropsDroplet.Size,
 		}
 		dropletActions = append(dropletActions, dropletAction)
-
 	}
 	if activeDroplet.Image != nil && activeDroplet.Image.Slug != gitdropsDroplet.Image {
 		log.Println("droplet", activeDroplet.Name, "image  has been updated in gitdrops.yaml")
@@ -249,7 +247,6 @@ func (dr *dropletReconciler) volumesToAttach(activeDroplet godo.Droplet, gitdrop
 				volumeFound = true
 				continue
 			}
-
 		}
 		if !volumeFound {
 			// create attach action for volume
@@ -291,7 +288,6 @@ func (dr *dropletReconciler) createObjects(ctx context.Context) error {
 			log.Println("error creating droplet ", dropletToCreate.Name)
 			return err
 		}
-
 	}
 	return nil
 }
