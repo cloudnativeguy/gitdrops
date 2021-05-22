@@ -1,4 +1,4 @@
-name: Go-static-analysis
+name: Go Static Analysis
 on:
   push: 
     branches: [main]
