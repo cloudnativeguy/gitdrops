@@ -1,9 +1,4 @@
 #cloud-config
 
 runcmd:
-  - [yum, install, -y, git, make]
-  - [mkdir, /root/git-tmp] 
-  - [cd, /root/git-tmp]
-  - [git, clone, "https://github.com/nolancon/go-dev-env"]
-  - [cd, go-dev-env]
-  - [make, local]
+  - [echo, "configure my droplet with cool stuff!"]

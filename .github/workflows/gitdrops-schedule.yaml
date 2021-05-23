@@ -1,8 +1,9 @@
 name: GitDrops Scheduled Commit 
 
 on:
-  schedule:
-    - cron: "0 6 * * 1,2,3,4,5"       
+        # Enter scheduled cron time(s) here
+        #  schedule:
+        #    - cron: ""       
 
 jobs:
   gitdrops-update:
