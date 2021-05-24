@@ -1,7 +1,7 @@
 ![build](https://github.com/cloudnativedude/gitdrops/actions/workflows/go-build-test.yaml/badge.svg)
 ![build](https://github.com/cloudnativedude/gitdrops/actions/workflows/go-static-analysis.yaml/badge.svg)
-
-# UNDER CONSTRUCTION 🛠️
+[![Go Report Card](https://goreportcard.com/badge/github.com/cloudnativedude/gitdrops)](https://goreportcard.com/report/github.com/cloudnativedude/gitdrops)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 # GitDrops 💧
 GitOps for DigitalOcean
