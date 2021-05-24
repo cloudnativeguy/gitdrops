@@ -58,7 +58,7 @@ GitDrops can be configured with `true` or `false` `privileges` for `create`, `up
 
 #### Droplets
 
-See [Droplet](https://github.com/cloudnativedude/gitdrops/blob/30fa3b45c68baf99524dcb1be4cdd81819717276/pkg/gitdrops/types.go#L17) type.
+See [Droplet](https://github.com/cloudnativedude/gitdrops/blob/main/pkg/gitdrops/types.go#L17) type.
 
 ##### Update Capabilities
 
@@ -70,7 +70,7 @@ Should you wish to change other details about a Droplet, it is necessary to crea
 
 #### Volumes
 
-See [Volume](https://github.com/cloudnativedude/gitdrops/blob/30fa3b45c68baf99524dcb1be4cdd81819717276/pkg/gitdrops/types.go#L33) type.
+See [Volume](https://github.com/cloudnativedude/gitdrops/blob/main/pkg/gitdrops/types.go#L33) type.
 
 ##### Update Capabilities
 
@@ -118,5 +118,5 @@ volumes:
 #### How It Works
 1. 📝 Edit [`gitdrops-update.yaml`](https://github.com/cloudnativedude/gitdrops/blob/main/gitdrops-update.yaml) to represent the desired state for your scheduled update. The `gitdrops-update.yaml` follows the same template as `gitdrops.yaml`, it is basically a "future state" for GitDrops to reconcile at a time you can specify in step 3.
 2. ⬆️ Commit and push your `gitdrops-update.yaml` file to your forked repo on the `main` branch.
-3. ⏲️ Set the [cron time schedule for GitDrops Schedule workflow](https://github.com/cloudnativedude/gitdrops/blob/30fa3b45c68baf99524dcb1be4cdd81819717276/.github/workflows/gitdrops-schedule.yaml#L5). This workflow creates a Git commit replacing `gitdrops.yaml` with your newly created `gitdrops-update.yaml` and pushes the changes to `main` using the Github Actions Bot. Read more [here](https://docs.github.com/en/actions/reference/events-that-trigger-workflows#schedule) about cron time syntax for Github Actions.
+3. ⏲️ Set the [cron time schedule for GitDrops Schedule workflow](https://github.com/cloudnativedude/gitdrops/blob/main/.github/workflows/gitdrops-schedule.yaml#L5). This workflow creates a Git commit replacing `gitdrops.yaml` with your newly created `gitdrops-update.yaml` and pushes the changes to `main` using the Github Actions Bot. Read more [here](https://docs.github.com/en/actions/reference/events-that-trigger-workflows#schedule) about cron time syntax for Github Actions.
 4. 💧 Once the GitDrops Schedule workflow has run to completion, the GitDrops Run workflow will begin. This performs the reconciliation of your DigitalOcean account with the newly committed `gitdrops.yaml` spec (i.e what you originally specified in step 1).
