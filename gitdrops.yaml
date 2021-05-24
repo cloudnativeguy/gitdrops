@@ -1,7 +1,7 @@
-#privileges:
-#  create: true
-#  update: false
-#  delete: true
+privileges:
+  create: true
+  update: false
+  delete: true
 #droplets:
 #- name: centos-droplet-1
 #  region: nyc3
