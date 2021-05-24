@@ -1,9 +1,9 @@
 name: GitDrops Run 
 
 on:
-        # Enter scheduled cron time(s) here 
-        #  schedule:
-        #    - cron: ""       
+# Enter scheduled cron time(s) here 
+#  schedule:
+#    - cron: ""       
   push:
     paths:
     - 'gitdrops.yaml'         
