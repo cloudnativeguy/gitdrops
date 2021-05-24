@@ -2,7 +2,7 @@ name: GitDrops Run
 
 on:
   workflow_run:
-    workflows: ["GitDrops Schedule"]
+    workflows: ["GitDrops Scheduled Commit"]
     types:
       - completed
   push:
