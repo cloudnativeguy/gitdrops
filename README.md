@@ -1,7 +1,6 @@
 ![build](https://github.com/cloudnativedude/gitdrops/actions/workflows/go-build-test.yaml/badge.svg)
 ![build](https://github.com/cloudnativedude/gitdrops/actions/workflows/go-static-analysis.yaml/badge.svg)
 [![Go Report Card](https://goreportcard.com/badge/github.com/cloudnativedude/gitdrops)](https://goreportcard.com/report/github.com/cloudnativedude/gitdrops)
-[![codecov](https://codecov.io/gh/cloudnativedude/gitdrops/branch/main/graph/badge.svg?token=biuvNCJr2k)](https://codecov.io/gh/cloudnativedude/gitdrops)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 # GitDrops 💧
