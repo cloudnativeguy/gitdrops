@@ -1,6 +1,7 @@
 privileges:
   create: true
   update: false
+  # warning: enabling delete privileges will remove all droplets and volumes not listed in this file
   delete: false
 droplets:
 - name: centos-droplet-1

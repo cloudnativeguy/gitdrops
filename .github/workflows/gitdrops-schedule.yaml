@@ -2,12 +2,8 @@ name: GitDrops Scheduled Commit
 
 on:
 # Enter scheduled cron time(s) here
-#  schedule:
-#    - cron: ""
-  push:
-    paths:
-    - 'gitdrops-schedule.yaml'
-    branches: [ main ]
+  schedule:
+    - cron: "22 10 * * *"
 
 jobs:
   gitdrops-update:
@@ -20,14 +16,14 @@ jobs:
 
     - name: Create local changes
       run: |
-        cp -f gitdrops-schedule.yaml gitdrops.yaml 
+        cp -f gitdrops-update.yaml gitdrops.yaml 
 
     - name: Commit files
       run: |
         git config --local user.email "41898282+github-actions[bot]@users.noreply.github.com"
         git config --local user.name "github-actions[bot]"
-        git add .
-        git commit -m "Copy gitdrops-schedule.yaml to gitdrops.yaml" -a
+        git add gitdrops.yaml
+        git commit -m "Copy gitdrops-update.yaml to gitdrops.yaml" -a
 
     - name: Push changes
       uses: ad-m/github-push-action@master
