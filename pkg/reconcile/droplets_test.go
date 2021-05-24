@@ -3,6 +3,7 @@ package reconcile
 import (
 	"github.com/nolancon/gitdrops/pkg/gitdrops"
 
+	"errors"
 	"reflect"
 	"testing"
 
@@ -478,6 +479,108 @@ func TestSetDropletsToDelete(t *testing.T) {
 		dr.setObjectsToDelete()
 		if !reflect.DeepEqual(dr.dropletsToDelete, tc.dropletsToDelete) {
 			t.Errorf("Failed %v, expected: %v, got %v", tc.name, tc.dropletsToDelete, dr.dropletsToDelete)
+		}
+	}
+}
+
+func TranslateDropletCreateRequest(t *testing.T) {
+	tcases := []struct {
+		name                    string
+		gitdropsDroplet         gitdrops.Droplet
+		expDropletCreateRequest *godo.DropletCreateRequest
+		expError                error
+		volumeNameToID          map[string]string
+	}{
+		{
+			name: "test case 1 - no name",
+			gitdropsDroplet: gitdrops.Droplet{
+				Region: "nyc3",
+				Size:   "1gb",
+				Image:  "ubuntu",
+			},
+			expDropletCreateRequest: &godo.DropletCreateRequest{},
+			expError:                errors.New("volume name not specified"),
+		},
+		{
+			name: "test case 2 - no region",
+			gitdropsDroplet: gitdrops.Droplet{
+				Name:    "volume-1",
+				Size:    "1gb",
+				Image:   "ubuntu",
+				VPCUUID: "abcd",
+			},
+			expDropletCreateRequest: &godo.DropletCreateRequest{},
+			expError:                errors.New("volume region not specified"),
+		},
+		{
+			name: "test case 3 - no size",
+			gitdropsDroplet: gitdrops.Droplet{
+				Name:    "volume-1",
+				Region:  "nyc3",
+				Image:   "ubuntu",
+				VPCUUID: "abcd",
+			},
+			expDropletCreateRequest: &godo.DropletCreateRequest{},
+			expError:                errors.New("volume sizeGigaBytes not specified"),
+		},
+		{
+			name: "test case 3 - no error",
+			gitdropsDroplet: gitdrops.Droplet{
+				Name:               "volume-1",
+				Region:             "nyc3",
+				Image:              "ubuntu",
+				SSHKeyFingerprints: []string{"abc", "def", "ghi"},
+				Volumes:            []string{"vol-1", "vol-2"},
+				Tags:               []string{"tag-1", "tag-2"},
+			},
+			volumeNameToID: map[string]string{
+				"abc": "abc-id",
+				"def": "def-id",
+				"ghi": "ghi-id",
+			},
+			expDropletCreateRequest: &godo.DropletCreateRequest{
+				Region: "nyc3",
+				Name:   "volume-1",
+				Image: godo.DropletCreateImage{
+					Slug: "ubuntu",
+				},
+				SSHKeys: []godo.DropletCreateSSHKey{
+					{
+						Fingerprint: "abc",
+					},
+					{
+						Fingerprint: "def",
+					},
+					{
+						Fingerprint: "ghi",
+					},
+				},
+				Volumes: []godo.DropletCreateVolume{
+					{
+						ID: "abc-id",
+					},
+					{
+						ID: "def-id",
+					},
+					{
+						ID: "ghi-id",
+					},
+				},
+				Tags: []string{"tag-1", "tag-2"},
+			},
+			expError: nil,
+		},
+	}
+	for _, tc := range tcases {
+		dr := newTestDropletReconciler(gitdrops.Privileges{}, nil, nil, nil, tc.volumeNameToID)
+		dropletCreateRequest, err := dr.translateDropletCreateRequest(tc.gitdropsDroplet)
+		if !reflect.DeepEqual(dropletCreateRequest, tc.expDropletCreateRequest) {
+			t.Errorf("Failed %v, expected: %v, got %v", tc.name, tc.expDropletCreateRequest, dropletCreateRequest)
+		}
+		if err != nil {
+			if err.Error() != tc.expError.Error() {
+				t.Errorf("Failed %v, expected error : %v, got error %v", tc.name, tc.expError, err)
+			}
 		}
 	}
 }
