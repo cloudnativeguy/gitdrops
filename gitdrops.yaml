@@ -1,23 +1,23 @@
 privileges:
-  create: true
+  create: false
   update: false
   # warning: enabling delete privileges will remove all droplets and volumes not listed in this file
-  delete: false
-droplets:
-- name: centos-droplet-1
-  region: nyc3
-  size: s-1vcpu-1gb
-  image: centos-8-x64         
-  backups: false
-  ipv6: false
-  volumes: ["volume-1"]
-  sshKeyFingerprint: "see digitalocean account for fingerprints"
-  userData:
-    path: cloudconfig
-volumes:
-- name: volume-1
-  region: nyc3
-  sizeGigaBytes: 100
-- name: volume-2
-  region: nyc3
-  sizeGigaBytes: 100
+  delete: false 
+  #droplets:
+  #- name: centos-droplet-1
+  #  region: nyc3
+  #  size: s-1vcpu-1gb
+  #  image: centos-8-x64         
+  #  backups: false
+  #  ipv6: false
+  #  volumes: ["volume-1"]
+  #  sshKeyFingerprint: "XX.XX.XX.XX..."
+  #  userData:
+  #    path: cloudconfig
+  #volumes:
+  #- name: volume-1
+  #  region: nyc3
+  #  sizeGigaBytes: 100
+  #- name: volume-2
+  #  region: nyc3
+  #  sizeGigaBytes: 100
