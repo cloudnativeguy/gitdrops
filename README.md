@@ -96,7 +96,7 @@ droplets:
   backups: false
   ipv6: false
   volumes: ["volume-1"]
-  sshKeyFingerprint: "XX:XX:XX:XX:XX..."
+  sshKeyFingerprints: ["XX:XX:XX:XX:XX..."]
   userData:
     path: cloudconfig
 volumes:

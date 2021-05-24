@@ -105,10 +105,12 @@ func (dr *dropletReconciler) translateDropletCreateRequest(gitdropsDroplet gitdr
 	dropletImage.Slug = gitdropsDroplet.Image
 	createRequest.Image = dropletImage
 
-	if len(gitdropsDroplet.SSHKeyFingerprint) != 0 {
-		dropletCreateSSHKey := godo.DropletCreateSSHKey{Fingerprint: gitdropsDroplet.SSHKeyFingerprint}
+	if gitdropsDroplet.SSHKeyFingerprints != nil {
 		dropletCreateSSHKeys := make([]godo.DropletCreateSSHKey, 0)
-		dropletCreateSSHKeys = append(dropletCreateSSHKeys, dropletCreateSSHKey)
+		for _, sshKeyFingerprint := range gitdropsDroplet.SSHKeyFingerprints {
+			dropletCreateSSHKey := godo.DropletCreateSSHKey{Fingerprint: sshKeyFingerprint}
+			dropletCreateSSHKeys = append(dropletCreateSSHKeys, dropletCreateSSHKey)
+		}
 		createRequest.SSHKeys = dropletCreateSSHKeys
 	}
 

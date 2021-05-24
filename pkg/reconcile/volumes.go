@@ -94,6 +94,14 @@ func translateVolumeCreateRequest(gitdropsVolume gitdrops.Volume) (*godo.VolumeC
 	createRequest.Name = gitdropsVolume.Name
 	createRequest.Region = gitdropsVolume.Region
 	createRequest.SizeGigaBytes = gitdropsVolume.SizeGigaBytes
+	createRequest.SnapshotID = gitdropsVolume.SnapshotID
+	createRequest.FilesystemType = gitdropsVolume.FilesystemType
+	createRequest.FilesystemLabel = gitdropsVolume.FilesystemLabel
+
+	if gitdropsVolume.Tags != nil {
+		createRequest.Tags = gitdropsVolume.Tags
+	}
+
 	return createRequest, nil
 }
 
