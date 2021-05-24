@@ -1,23 +1,22 @@
-#privileges:
-#  create: true
-#  update: false
-#  delete: false
-#droplets:
-#- name: centos-droplet-1
-#  region: nyc3
-#  size: s-1vcpu-1gb
-#  image: centos-8-x64         
-#  backups: false
-#  ipv6: false
-#  volumes: ["volume-1"]
-#  sshKeyFingerprint: "see digitalocean account for fingerprints"
-#  userData:
-#    path: cloudconfig
-#volumes:
-#- name: volume-1
-#  region: nyc3
-#  sizeGigaBytes: 100
-#- name: volume-2
-#  region: nyc3
-#  sizeGigaBytes: 100
-#  TEST-2
+privileges:
+  create: true
+  update: false
+  delete: false
+droplets:
+- name: centos-droplet-1
+  region: nyc3
+  size: s-1vcpu-1gb
+  image: centos-8-x64         
+  backups: false
+  ipv6: false
+  volumes: ["volume-1"]
+  sshKeyFingerprint: "see digitalocean account for fingerprints"
+  userData:
+    path: cloudconfig
+volumes:
+- name: volume-1
+  region: nyc3
+  sizeGigaBytes: 100
+- name: volume-2
+  region: nyc3
+  sizeGigaBytes: 100
