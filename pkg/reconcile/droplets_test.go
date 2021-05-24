@@ -483,7 +483,7 @@ func TestSetDropletsToDelete(t *testing.T) {
 	}
 }
 
-func TranslateDropletCreateRequest(t *testing.T) {
+func TestTranslateDropletCreateRequest(t *testing.T) {
 	tcases := []struct {
 		name                    string
 		gitdropsDroplet         gitdrops.Droplet
@@ -499,7 +499,7 @@ func TranslateDropletCreateRequest(t *testing.T) {
 				Image:  "ubuntu",
 			},
 			expDropletCreateRequest: &godo.DropletCreateRequest{},
-			expError:                errors.New("volume name not specified"),
+			expError:                errors.New("droplet name not specified"),
 		},
 		{
 			name: "test case 2 - no region",
@@ -510,7 +510,7 @@ func TranslateDropletCreateRequest(t *testing.T) {
 				VPCUUID: "abcd",
 			},
 			expDropletCreateRequest: &godo.DropletCreateRequest{},
-			expError:                errors.New("volume region not specified"),
+			expError:                errors.New("droplet region not specified"),
 		},
 		{
 			name: "test case 3 - no size",
@@ -521,7 +521,7 @@ func TranslateDropletCreateRequest(t *testing.T) {
 				VPCUUID: "abcd",
 			},
 			expDropletCreateRequest: &godo.DropletCreateRequest{},
-			expError:                errors.New("volume sizeGigaBytes not specified"),
+			expError:                errors.New("droplet size not specified"),
 		},
 		{
 			name: "test case 3 - no error",
@@ -529,14 +529,15 @@ func TranslateDropletCreateRequest(t *testing.T) {
 				Name:               "volume-1",
 				Region:             "nyc3",
 				Image:              "ubuntu",
+				Size:               "1gb",
 				SSHKeyFingerprints: []string{"abc", "def", "ghi"},
-				Volumes:            []string{"vol-1", "vol-2"},
+				Volumes:            []string{"vol-1", "vol-3"},
 				Tags:               []string{"tag-1", "tag-2"},
 			},
 			volumeNameToID: map[string]string{
-				"abc": "abc-id",
-				"def": "def-id",
-				"ghi": "ghi-id",
+				"vol-1": "vol-1-id",
+				"vol-2": "vol-2-id",
+				"vol-3": "vol-3-id",
 			},
 			expDropletCreateRequest: &godo.DropletCreateRequest{
 				Region: "nyc3",
@@ -544,6 +545,7 @@ func TranslateDropletCreateRequest(t *testing.T) {
 				Image: godo.DropletCreateImage{
 					Slug: "ubuntu",
 				},
+				Size: "1gb",
 				SSHKeys: []godo.DropletCreateSSHKey{
 					{
 						Fingerprint: "abc",
@@ -557,13 +559,10 @@ func TranslateDropletCreateRequest(t *testing.T) {
 				},
 				Volumes: []godo.DropletCreateVolume{
 					{
-						ID: "abc-id",
+						ID: "vol-1-id",
 					},
 					{
-						ID: "def-id",
-					},
-					{
-						ID: "ghi-id",
+						ID: "vol-3-id",
 					},
 				},
 				Tags: []string{"tag-1", "tag-2"},
