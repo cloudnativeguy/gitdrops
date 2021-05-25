@@ -3,6 +3,8 @@
 [![Go Report Card](https://goreportcard.com/badge/github.com/cloudnativedude/gitdrops)](https://goreportcard.com/report/github.com/cloudnativedude/gitdrops)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
+![gitdrops-logo-centered](https://user-images.githubusercontent.com/41484746/119481306-726e6880-bd4a-11eb-9a3c-e3f3d849423f.png)
+
 # GitDrops 💧
 GitOps for DigitalOcean
 
