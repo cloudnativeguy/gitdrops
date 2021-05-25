@@ -46,7 +46,11 @@ Not to mention it was a fun way to get acquainted with the [DigitalOcean API](ht
 
 * Create a Github secret named `DIGITALOCEAN_TOKEN` with your DigitalOcean account authentication token.
 * Edit `gitdrops.yaml` locally.
+
+**Warning**: Please read editing instructions below before pushing your local changes.
+
 * Git commit & push your edited `gitdrops.yaml` to your forked repo on the `main` branch.
+* The enabled Github Action '[GitDrops Run](https://github.com/cloudnativeguy/gitdrops/blob/main/.github/workflows/gitdrops-run.yaml)' takes it from here and reconciles your DigitalOcean account.
 
 ### Editing `gitdrops.yaml`
 
@@ -60,7 +64,7 @@ GitDrops can be configured with `true` or `false` `privileges` for `create`, `up
 
 #### Droplets
 
-See [Droplet](https://github.com/cloudnativeguy/gitdrops/blob/main/pkg/gitdrops/types.go#L17) type.
+See [Droplet](https://github.com/cloudnativeguy/gitdrops/blob/main/pkg/gitdrops/types.go#L15) type.
 
 ##### Update Capabilities
 
@@ -72,7 +76,7 @@ Should you wish to change other details about a Droplet, it is necessary to crea
 
 #### Volumes
 
-See [Volume](https://github.com/cloudnativeguy/gitdrops/blob/main/pkg/gitdrops/types.go#L33) type.
+See [Volume](https://github.com/cloudnativeguy/gitdrops/blob/main/pkg/gitdrops/types.go#L37) type.
 
 ##### Update Capabilities
 
