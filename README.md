@@ -79,7 +79,7 @@ See [Volume](https://github.com/cloudnativedude/gitdrops/blob/main/pkg/gitdrops/
 GitDrops only supports Volume updates for:
 * Volume attach (i.e. changed `droplets.volumes` value in `gitdrops.yaml`)
 * Volume detach (i.e. changed `droplets.volumes` value in `gitdrops.yaml`)
-* Volume resize (i.e. changed `drople.size` in `gitdrops.yaml`)
+* Volume resize (i.e. changed `droplets.size` in `gitdrops.yaml`)
 
 Should you wish to change other details about a Volume, it is necessary to create a new Volume with your desired details.
 
