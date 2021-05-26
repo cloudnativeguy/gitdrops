@@ -2,10 +2,10 @@ package reconcile
 
 import (
 	"context"
+	"github.com/nolancon/gitdrops/pkg/gitdrops"
 	"log"
 	"os"
-
-	"github.com/nolancon/gitdrops/pkg/gitdrops"
+	"time"
 
 	"github.com/digitalocean/godo"
 )
@@ -106,6 +106,10 @@ func (r *Reconciler) Reconcile(ctx context.Context) error {
 		return err
 	}
 	log.Println("initial volume reconciliation complete")
+
+	// wait 5 seconds to allow any volume creation before droplet creation
+	time.Sleep(5 * time.Second)
+
 	log.Println("begin droplet reconciliation(create, delete, resize, rebuild)...")
 	err = r.dropletReconciler.reconcile(ctx)
 	if err != nil {
