@@ -22,27 +22,27 @@ type volumeReconciler struct {
 
 var _ objectReconciler = &volumeReconciler{}
 
-func (vr *volumeReconciler) reconcile(ctx context.Context) error {
-	if vr.privileges.Create {
-		err := vr.createObjects(ctx)
-		if err != nil {
-			log.Println("error creating volume")
-			return err
+func (vr *volumeReconciler) reconcile(ctx context.Context) {
+	if len(vr.volumesToCreate) != 0 {
+		if vr.privileges.Create {
+			err := vr.createObjects(ctx)
+			if err != nil {
+				log.Println("error creating volume", err)
+			}
+		} else {
+			log.Println("gitdrops.yaml does not have create privileges")
 		}
-	} else {
-		log.Println("gitdrops.yaml does not have create privileges")
 	}
-	if vr.privileges.Update {
-		err := vr.updateObjects(ctx)
-		if err != nil {
-			log.Println("error updating volume")
-			return err
+	if len(vr.volumesToUpdate) != 0 {
+		if vr.privileges.Update {
+			err := vr.updateObjects(ctx)
+			if err != nil {
+				log.Println("error updating volume", err)
+			}
+		} else {
+			log.Println("gitdrops.yaml does not have update privileges")
 		}
-	} else {
-		log.Println("gitdrops.yaml does not have update privileges")
 	}
-
-	return nil
 }
 
 func (vr *volumeReconciler) setActiveObjects(ctx context.Context) error {
@@ -59,7 +59,7 @@ func (vr *volumeReconciler) secondaryReconcile(ctx context.Context, objectsToUpd
 	if vr.privileges.Delete {
 		err := vr.deleteObjects(ctx)
 		if err != nil {
-			log.Println("error deleting droplet")
+			log.Println("error deleting volume")
 			return err
 		}
 	} else {

@@ -8,11 +8,19 @@ import (
 )
 
 const (
-	shortDuration = 10 * time.Second
+	// 15s as there is a 10s sleep between reconciliations to allow updates
+	duration = 15 * time.Second
 )
 
 func main() {
-	ctx, cancel := context.WithTimeout(context.Background(), shortDuration)
+	//	var ctx context.Context
+	//	var ctxCancelFunc context.CancelFunc
+	//	var timeUntilContextDeadline = time.Now().Add(duration)
+	//
+	//	ctx, ctxCancelFunc = context.WithDeadline(context.Background(), timeUntilContextDeadline)
+	//	defer ctxCancelFunc()
+
+	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	reconcileDroplets, err := reconcile.NewReconciler(ctx)
 	if err != nil {

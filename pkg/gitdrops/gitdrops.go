@@ -2,10 +2,10 @@ package gitdrops
 
 import (
 	"context"
+	"github.com/digitalocean/godo"
 	"io/ioutil"
 	"log"
-
-	"github.com/digitalocean/godo"
+	"time"
 
 	"gopkg.in/yaml.v2"
 )
@@ -15,6 +15,7 @@ const (
 	retries          = 10
 	resize           = "resize"
 	rebuild          = "rebuild"
+	timeout          = 3 * time.Second
 )
 
 // ReadGitDrops reads and unmarshals from gitdrops.yaml
@@ -61,6 +62,7 @@ func ListDroplets(ctx context.Context, client *godo.Client) ([]godo.Droplet, err
 				if i == retries-1 {
 					return list, err
 				}
+				time.Sleep(timeout)
 			} else {
 				droplets = dropletsTmp
 				resp = respTmp
@@ -96,6 +98,7 @@ func DeleteDroplet(ctx context.Context, client *godo.Client, id int) error {
 			if i == retries-1 {
 				return err
 			}
+			time.Sleep(timeout)
 		} else {
 			log.Println("delete request for droplet ", id, " returned: ", response.StatusCode)
 			break
@@ -109,10 +112,11 @@ func CreateDroplet(ctx context.Context, client *godo.Client, dropletCreateReques
 	for i := 0; i < retries; i++ {
 		_, response, err := client.Droplets.Create(ctx, dropletCreateRequest)
 		if err != nil {
-			log.Println("error creating droplet ", dropletCreateRequest.Name)
+			log.Println("error creating droplet", dropletCreateRequest.Name, err)
 			if i == retries-1 {
 				return err
 			}
+			time.Sleep(timeout)
 		} else {
 			log.Println("create request for ", dropletCreateRequest.Name, "returned ", response.Status)
 			break
@@ -132,6 +136,7 @@ func UpdateDroplet(ctx context.Context, client *godo.Client, id int, action, val
 				if i == retries-1 {
 					return err
 				}
+				time.Sleep(timeout)
 			} else {
 				log.Println("droplet action request for resize ", id, "returned ", response.Status)
 				break
@@ -145,6 +150,7 @@ func UpdateDroplet(ctx context.Context, client *godo.Client, id int, action, val
 				if i == retries-1 {
 					return err
 				}
+				time.Sleep(timeout)
 			} else {
 				log.Println("droplet action request for rebuild ", id, "returned ", response.Status)
 				break
@@ -171,6 +177,7 @@ func ListVolumes(ctx context.Context, client *godo.Client) ([]godo.Volume, error
 				if i == retries-1 {
 					return list, err
 				}
+				time.Sleep(timeout)
 			} else {
 				volumes = volumesTmp
 				resp = respTmp
@@ -206,6 +213,7 @@ func DeleteVolume(ctx context.Context, client *godo.Client, id string) error {
 			if i == retries-1 {
 				return err
 			}
+			time.Sleep(timeout)
 		} else {
 			log.Println("delete request for volume ", id, " returned: ", response.StatusCode)
 			break
@@ -223,6 +231,7 @@ func CreateVolume(ctx context.Context, client *godo.Client, volumeCreateRequest 
 			if i == retries-1 {
 				return err
 			}
+			time.Sleep(timeout)
 		} else {
 			log.Println("create request for ", volumeCreateRequest.Name, "returned ", response.Status)
 			break
@@ -240,6 +249,7 @@ func AttachVolume(ctx context.Context, client *godo.Client, volID string, drople
 			if i == retries-1 {
 				return err
 			}
+			time.Sleep(timeout)
 		} else {
 			log.Println("volume action request for attachment ", volID, "returned ", response.Status)
 			break
@@ -257,6 +267,7 @@ func DetachVolume(ctx context.Context, client *godo.Client, volID string, drople
 			if i == retries-1 {
 				return err
 			}
+			time.Sleep(timeout)
 		} else {
 			log.Println("volume action request for detachment ", volID, "returned ", response.Status)
 			break
@@ -274,6 +285,7 @@ func ResizeVolume(ctx context.Context, client *godo.Client, volID, region string
 			if i == retries-1 {
 				return err
 			}
+			time.Sleep(timeout)
 		} else {
 			log.Println("volume action request for resize ", volID, "returned ", response.Status)
 			break

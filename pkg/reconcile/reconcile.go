@@ -19,7 +19,7 @@ const (
 )
 
 type objectReconciler interface {
-	reconcile(context.Context) error
+	reconcile(context.Context)
 	secondaryReconcile(context.Context, actionsByID) error
 	setActiveObjects(context.Context) error
 	setObjectsToUpdateAndCreate()
@@ -60,17 +60,14 @@ func NewReconciler(ctx context.Context) (Reconciler, error) {
 		client:          client,
 		gitdropsVolumes: gitDrops.Volumes,
 	}
-	activeVolumes, err := gitdrops.ListVolumes(ctx, volumeReconciler.client)
+
+	err = volumeReconciler.setActiveObjects(ctx)
 	if err != nil {
-		log.Println("Error while listing volumes", err)
 		return Reconciler{}, err
 	}
-
-	volumeReconciler.activeVolumes = activeVolumes
 	volumeReconciler.setObjectsToUpdateAndCreate()
 	volumeReconciler.setObjectsToDelete()
 
-	log.Println("active volumes:", len(activeVolumes))
 	log.Println("active volumes to delete:", volumeReconciler.volumesToDelete)
 	log.Println("gitdrops volumes to update:", volumeReconciler.volumesToUpdate)
 	log.Println("gitdrops volumes to create:", volumeReconciler.volumesToCreate)
@@ -88,7 +85,6 @@ func NewReconciler(ctx context.Context) (Reconciler, error) {
 	dropletReconciler.setObjectsToUpdateAndCreate()
 	dropletReconciler.setObjectsToDelete()
 
-	log.Println("active droplets:", len(activeVolumes))
 	log.Println("active droplets to delete:", dropletReconciler.dropletsToDelete)
 	log.Println("gitdrops droplets to update:", dropletReconciler.dropletsToUpdate)
 	log.Println("gitdrops droplets to create:", dropletReconciler.dropletsToCreate)
@@ -101,29 +97,25 @@ func NewReconciler(ctx context.Context) (Reconciler, error) {
 
 func (r *Reconciler) Reconcile(ctx context.Context) error {
 	log.Println("begin initial volume reconciliation(create, resize)...")
-	err := r.volumeReconciler.reconcile(ctx)
-	if err != nil {
-		return err
-	}
+	r.volumeReconciler.reconcile(ctx)
 	log.Println("initial volume reconciliation complete")
 
-	// wait 5 seconds to allow any volume creation before droplet creation
-	time.Sleep(5 * time.Second)
-
-	log.Println("begin droplet reconciliation(create, delete, resize, rebuild)...")
-	err = r.dropletReconciler.reconcile(ctx)
-	if err != nil {
-		return err
-	}
-	log.Println("droplet reconciliation complete")
-	log.Println("begin secondary volume reconciliation (delete, attach, detach)...")
+	// wait 10 seconds to allow any volume creation before droplet creation,
+	// also allow time for volumes to attach detach
+	log.Println("waiting for volumes to update before reconciling droplets (10s)...")
+	time.Sleep(10 * time.Second)
 
 	// re-set active objects in the droplet reconciler because the volumes have been
 	// reconciled and we need to search again for volume attach/detach actions.
-	err = r.dropletReconciler.setActiveObjects(ctx)
+	err := r.dropletReconciler.setActiveObjects(ctx)
 	if err != nil {
 		return err
 	}
+	log.Println("begin droplet reconciliation(create, delete, resize, rebuild)...")
+	r.dropletReconciler.reconcile(ctx)
+	log.Println("droplet reconciliation complete")
+	log.Println("begin secondary volume reconciliation (delete, attach, detach)...")
+
 	// pass objects to update from droplet reconciler to volume reconciler
 	// as they now contain actions for volumes to attac/detach from droplets
 	// based on droplet reconciliation

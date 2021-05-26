@@ -47,37 +47,37 @@ func (dr *dropletReconciler) setActiveObjects(ctx context.Context) error {
 	return nil
 }
 
-func (dr *dropletReconciler) reconcile(ctx context.Context) error {
-	if dr.privileges.Delete {
-		err := dr.deleteObjects(ctx)
-		if err != nil {
-			log.Println("error deleting droplet")
-			return err
+func (dr *dropletReconciler) reconcile(ctx context.Context) {
+	if len(dr.dropletsToDelete) != 0 {
+		if dr.privileges.Delete {
+			err := dr.deleteObjects(ctx)
+			if err != nil {
+				log.Println("error deleting droplet", err)
+			}
+		} else {
+			log.Println("gitdrops.yaml does not have delete privileges")
 		}
-	} else {
-		log.Println("gitdrops.yaml does not have delete privileges")
 	}
-	if dr.privileges.Create {
-		err := dr.createObjects(ctx)
-		if err != nil {
-			log.Println("error creating droplet")
-			return err
+	if len(dr.dropletsToCreate) != 0 {
+		if dr.privileges.Create {
+			err := dr.createObjects(ctx)
+			if err != nil {
+				log.Println("error creating droplet", err)
+			}
+		} else {
+			log.Println("gitdrops.yaml does not have create privileges")
 		}
-	} else {
-		log.Println("gitdrops.yaml does not have create privileges")
 	}
-
-	if dr.privileges.Update {
-		err := dr.updateObjects(ctx)
-		if err != nil {
-			log.Println("error updating droplet")
-			return err
+	if len(dr.dropletsToUpdate) != 0 {
+		if dr.privileges.Update {
+			err := dr.updateObjects(ctx)
+			if err != nil {
+				log.Println("error updating droplet", err)
+			}
+		} else {
+			log.Println("gitdrops.yaml does not have update privileges")
 		}
-	} else {
-		log.Println("gitdrops.yaml does not have update privileges")
 	}
-
-	return nil
 }
 
 func (dr *dropletReconciler) secondaryReconcile(context.Context, actionsByID) error {
