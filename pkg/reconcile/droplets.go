@@ -114,10 +114,6 @@ func (dr *dropletReconciler) translateDropletCreateRequest(gitdropsDroplet gitdr
 		createRequest.SSHKeys = dropletCreateSSHKeys
 	}
 
-	if gitdropsDroplet.VPCUUID != "" {
-		createRequest.VPCUUID = gitdropsDroplet.VPCUUID
-	}
-
 	if len(gitdropsDroplet.Volumes) != 0 {
 		dropletCreateVolumes := make([]godo.DropletCreateVolume, 0)
 		for _, vol := range gitdropsDroplet.Volumes {
