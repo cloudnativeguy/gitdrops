@@ -72,7 +72,7 @@ GitDrops only supports Droplet updates for:
 * Image rebuild (i.e. changed `droplet.image` in `gitdrops.yaml`)
 * Droplet resize (i.e. changed `drople.size` in `gitdrops.yaml`)
 
-Should you wish to change other details about a Droplet, it is necessary to create a new Droplet with your desired details.
+Should you wish to change other details of a Droplet, it is necessary to create a new Droplet with your desired details.
 
 #### Volumes
 
@@ -83,9 +83,9 @@ See [Volume](https://github.com/cloudnativeguy/gitdrops/blob/main/pkg/gitdrops/t
 GitDrops only supports Volume updates for:
 * Volume attach (i.e. changed `droplets.volumes` value in `gitdrops.yaml`)
 * Volume detach (i.e. changed `droplets.volumes` value in `gitdrops.yaml`)
-* Volume resize (i.e. changed `droplets.size` in `gitdrops.yaml`)
+* Volume resize (i.e. changed `volumes.size` in `gitdrops.yaml`)
 
-Should you wish to change other details about a Volume, it is necessary to create a new Volume with your desired details.
+Should you wish to change other details of a Volume, it is necessary to create a new Volume with your desired details.
 
 #### Example
 
