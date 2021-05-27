@@ -228,7 +228,6 @@ func CreateVolume(ctx context.Context, client *godo.Client, volumeCreateRequest 
 		if err != nil {
 			if i == retries-1 {
 				return fmt.Errorf("CreateVolumes: %v", err)
-
 			}
 			timeout()
 		} else {

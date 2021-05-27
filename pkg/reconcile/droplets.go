@@ -286,7 +286,6 @@ func (dr *dropletReconciler) createObjects(ctx context.Context) error {
 		err = gitdrops.CreateDroplet(ctx, dr.client, dropletCreateRequest)
 		if err != nil {
 			return fmt.Errorf("dropletReconciler.createObjects: %v", err)
-
 		}
 	}
 	return nil
