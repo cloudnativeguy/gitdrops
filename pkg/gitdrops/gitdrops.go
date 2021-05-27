@@ -47,7 +47,7 @@ func ReadGitDrops() (GitDrops, error) {
 		}
 		gitDrops.Droplets[i].UserData.Data = string(userData)
 	}
-	log.Println("gitdrops.yaml contains", len(gitDrops.Droplets), "droplet(s) and", len(gitDrops.Volumes), "volume(s)")
+	log.Println("ReadGitDrops: gitdrops.yaml contains", len(gitDrops.Droplets), "droplet(s) and", len(gitDrops.Volumes), "volume(s)")
 	return gitDrops, nil
 }
 
@@ -104,7 +104,7 @@ func DeleteDroplet(ctx context.Context, client *godo.Client, id int) error {
 			}
 			timeout()
 		} else {
-			log.Println("delete request for droplet", id, "returned:", response.StatusCode)
+			log.Println("DeleteDroplet: delete request for droplet", id, "returned:", response.StatusCode)
 			break
 		}
 	}
@@ -121,7 +121,7 @@ func CreateDroplet(ctx context.Context, client *godo.Client, dropletCreateReques
 			}
 			timeout()
 		} else {
-			log.Println("create request for", dropletCreateRequest.Name, "returned", response.Status)
+			log.Println("CreateDroplet: create request for", dropletCreateRequest.Name, "returned", response.Status)
 			break
 		}
 	}
@@ -140,7 +140,7 @@ func UpdateDroplet(ctx context.Context, client *godo.Client, id int, action, val
 				}
 				timeout()
 			} else {
-				log.Println("droplet action request for resize", id, "returned", response.Status)
+				log.Println("UpdateDroplet: droplet action request for resize", id, "returned", response.Status)
 				break
 			}
 		}
@@ -153,7 +153,7 @@ func UpdateDroplet(ctx context.Context, client *godo.Client, id int, action, val
 				}
 				timeout()
 			} else {
-				log.Println("droplet action request for rebuild", id, "returned", response.Status)
+				log.Println("UpdateDroplet: droplet action request for rebuild", id, "returned", response.Status)
 				break
 			}
 		}
@@ -214,7 +214,7 @@ func DeleteVolume(ctx context.Context, client *godo.Client, id string) error {
 			}
 			timeout()
 		} else {
-			log.Println("delete request for", id, "returned", response.Status)
+			log.Println("DeleteVolume: delete request for", id, "returned", response.Status)
 			break
 		}
 	}
@@ -231,7 +231,7 @@ func CreateVolume(ctx context.Context, client *godo.Client, volumeCreateRequest 
 			}
 			timeout()
 		} else {
-			log.Println("create request for", volumeCreateRequest.Name, "returned", response.Status)
+			log.Println("CreateVolume: create request for", volumeCreateRequest.Name, "returned", response.Status)
 			break
 		}
 	}
@@ -248,7 +248,7 @@ func AttachVolume(ctx context.Context, client *godo.Client, volID string, drople
 			}
 			timeout()
 		} else {
-			log.Println("volume action request for attachment", volID, "returned", response.Status)
+			log.Println("AttachVolume: volume action request for attachment", volID, "returned", response.Status)
 			break
 		}
 	}
@@ -265,7 +265,7 @@ func DetachVolume(ctx context.Context, client *godo.Client, volID string, drople
 			}
 			timeout()
 		} else {
-			log.Println("volume action request for detachment", volID, "returned", response.Status)
+			log.Println("DetachVolume: volume action request for detachment", volID, "returned", response.Status)
 			break
 		}
 	}
@@ -282,7 +282,7 @@ func ResizeVolume(ctx context.Context, client *godo.Client, volID, region string
 			}
 			timeout()
 		} else {
-			log.Println("volume action request for resize", volID, "returned", response.Status)
+			log.Println("ResizeVolume: volume action request for resize", volID, "returned", response.Status)
 			break
 		}
 	}
