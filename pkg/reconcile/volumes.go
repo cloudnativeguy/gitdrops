@@ -3,11 +3,18 @@ package reconcile
 import (
 	"context"
 	"errors"
+	"fmt"
 	"log"
 
 	"github.com/nolancon/gitdrops/pkg/gitdrops"
 
 	"github.com/digitalocean/godo"
+)
+
+const (
+	volumeNameErr          = "translateVolumeCreateRequest: volume name not specified"
+	volumeRegionErr        = "translateVolumeCreateRequest: volume region not specified"
+	volumeSizeGigaBytesErr = "translateVolumeCreateRequest: volume sizeGigaBytes not specified"
 )
 
 type volumeReconciler struct {
@@ -22,59 +29,59 @@ type volumeReconciler struct {
 
 var _ objectReconciler = &volumeReconciler{}
 
-func (vr *volumeReconciler) reconcile(ctx context.Context) {
+func (vr *volumeReconciler) reconcile(ctx context.Context) error {
 	if len(vr.volumesToCreate) != 0 {
 		if vr.privileges.Create {
 			err := vr.createObjects(ctx)
 			if err != nil {
-				log.Println("error creating volume", err)
+				return fmt.Errorf("volumeReconciler.reconcile: %v", err)
 			}
 		} else {
-			log.Println("gitdrops.yaml does not have create privileges")
+			log.Println("gitdrops discovered volumes to create, but does not have create privileges")
 		}
 	}
 	if len(vr.volumesToUpdate) != 0 {
 		if vr.privileges.Update {
 			err := vr.updateObjects(ctx)
 			if err != nil {
-				log.Println("error updating volume", err)
+				return fmt.Errorf("volumeReconciler.reconcile: %v", err)
 			}
 		} else {
-			log.Println("gitdrops.yaml does not have update privileges")
+			log.Println("gitdrops discovered volumes to update, but does not have update privileges")
 		}
 	}
+	return nil
 }
 
 func (vr *volumeReconciler) setActiveObjects(ctx context.Context) error {
 	activeVolumes, err := gitdrops.ListVolumes(ctx, vr.client)
 	if err != nil {
-		log.Println("Error while listing volumes", err)
-		return err
+		return fmt.Errorf("volumeReconciler.setActiveObjects: %v", err)
 	}
 	vr.activeVolumes = activeVolumes
 	return nil
 }
 
 func (vr *volumeReconciler) secondaryReconcile(ctx context.Context, objectsToUpdate actionsByID) error {
-	if vr.privileges.Delete {
-		err := vr.deleteObjects(ctx)
-		if err != nil {
-			log.Println("error deleting volume")
-			return err
+	if len(vr.volumesToDelete) != 0 {
+		if vr.privileges.Delete {
+			err := vr.deleteObjects(ctx)
+			if err != nil {
+				return fmt.Errorf("volumeReconciler.secondaryReconcile: %v", err)
+			}
+		} else {
+			log.Println("gitdrops discovered volumes to delete, but does not have delete privileges")
 		}
-	} else {
-		log.Println("gitdrops.yaml does not have delete privileges")
 	}
-
 	err := vr.setActiveObjects(ctx)
 	if err != nil {
-		return err
+		return fmt.Errorf("volumeReconciler.secondaryReconcile: %v", err)
 	}
 
 	vr.volumesToUpdate = objectsToUpdate
 	err = vr.updateObjects(ctx)
 	if err != nil {
-		return err
+		return fmt.Errorf("volumeReconciler.secondaryReconcile: %v", err)
 	}
 
 	return nil
@@ -83,13 +90,13 @@ func (vr *volumeReconciler) secondaryReconcile(ctx context.Context, objectsToUpd
 func translateVolumeCreateRequest(gitdropsVolume gitdrops.Volume) (*godo.VolumeCreateRequest, error) {
 	createRequest := &godo.VolumeCreateRequest{}
 	if gitdropsVolume.Name == "" {
-		return createRequest, errors.New("volume name not specified")
+		return createRequest, errors.New(volumeNameErr)
 	}
 	if gitdropsVolume.Region == "" {
-		return createRequest, errors.New("volume region not specified")
+		return createRequest, errors.New(volumeRegionErr)
 	}
 	if gitdropsVolume.SizeGigaBytes == 0 {
-		return createRequest, errors.New("volume sizeGigaBytes not specified")
+		return createRequest, errors.New(volumeSizeGigaBytesErr)
 	}
 	createRequest.Name = gitdropsVolume.Name
 	createRequest.Region = gitdropsVolume.Region
@@ -128,7 +135,6 @@ func (vr *volumeReconciler) setObjectsToUpdateAndCreate() {
 		}
 		if !volumeIsActive {
 			//create volume from local request
-			log.Println("volume not active, create volume ", gitdropsVolume)
 			volumesToCreate = append(volumesToCreate, gitdropsVolume)
 		}
 	}
@@ -166,7 +172,6 @@ func getVolumeActions(gitdropsVolume gitdrops.Volume, activeVolume godo.Volume) 
 	var volumeActions []action
 	if activeVolume.SizeGigaBytes != 0 && activeVolume.SizeGigaBytes != gitdropsVolume.SizeGigaBytes {
 		log.Println("volume", activeVolume.Name, "size has been updated in gitdrops.yaml")
-
 		volumeAction := action{
 			action: resize,
 			value:  gitdropsVolume.SizeGigaBytes,
@@ -180,8 +185,7 @@ func (vr *volumeReconciler) deleteObjects(ctx context.Context) error {
 	for _, id := range vr.volumesToDelete {
 		err := gitdrops.DeleteVolume(ctx, vr.client, id)
 		if err != nil {
-			log.Println("error during delete request for volume ", id, " error: ", err)
-			return err
+			return fmt.Errorf("volumeReconciler.deleteObjects: %v", err)
 		}
 	}
 	return nil
@@ -191,13 +195,11 @@ func (vr *volumeReconciler) createObjects(ctx context.Context) error {
 	for _, volumeToCreate := range vr.volumesToCreate {
 		volumeCreateRequest, err := translateVolumeCreateRequest(volumeToCreate)
 		if err != nil {
-			log.Println("error converting gitdrops.yaml to volume create request:")
-			return err
+			return fmt.Errorf("volumeReconciler.createObjects: %v", err)
 		}
 		err = gitdrops.CreateVolume(ctx, vr.client, volumeCreateRequest)
 		if err != nil {
-			log.Println("error creating volume ", volumeToCreate.Name)
-			return err
+			return fmt.Errorf("volumeReconciler.createObjects: %v", err)
 		}
 	}
 	return nil
@@ -210,9 +212,7 @@ func (vr *volumeReconciler) updateObjects(ctx context.Context) error {
 			case resize:
 				err := gitdrops.ResizeVolume(ctx, vr.client, id.(string), vr.findVolumeRegion(id.(string)), volumeAction.value)
 				if err != nil {
-					log.Println("error during resize action request for volume ", id, " error: ", err)
-					// we do not return here as there may be more actions to complete
-					// for this volume.
+					return fmt.Errorf("volumeReconciler.updateObjects (resize): %v", err)
 				}
 			case attach:
 				// in this case, 'id' is that of the droplet and 'value' is the volume
@@ -220,7 +220,7 @@ func (vr *volumeReconciler) updateObjects(ctx context.Context) error {
 				// droplet reconciler.
 				err := gitdrops.AttachVolume(ctx, vr.client, volumeAction.value.(string), id.(int))
 				if err != nil {
-					log.Println("error during attach action request for volume ", volumeAction.value.(string), " error: ", err)
+					return fmt.Errorf("volumeReconciler.updateObjects (attach): %v", err)
 				}
 			case detach:
 				// in this case, 'id' is that of the droplet and 'value' is the volume
@@ -228,7 +228,7 @@ func (vr *volumeReconciler) updateObjects(ctx context.Context) error {
 				// droplet reconciler.
 				err := gitdrops.DetachVolume(ctx, vr.client, volumeAction.value.(string), id.(int))
 				if err != nil {
-					log.Println("error during detach action request for volume ", volumeAction.value.(string), " error: ", err)
+					return fmt.Errorf("volumeReconciler.updateObjects (detach): %v", err)
 				}
 			}
 		}

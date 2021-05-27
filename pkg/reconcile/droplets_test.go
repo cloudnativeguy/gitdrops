@@ -499,7 +499,7 @@ func TestTranslateDropletCreateRequest(t *testing.T) {
 				Image:  "ubuntu",
 			},
 			expDropletCreateRequest: &godo.DropletCreateRequest{},
-			expError:                errors.New("droplet name not specified"),
+			expError:                errors.New(dropletNameErr),
 		},
 		{
 			name: "test case 2 - no region",
@@ -510,7 +510,7 @@ func TestTranslateDropletCreateRequest(t *testing.T) {
 				VPCUUID: "abcd",
 			},
 			expDropletCreateRequest: &godo.DropletCreateRequest{},
-			expError:                errors.New("droplet region not specified"),
+			expError:                errors.New(dropletRegionErr),
 		},
 		{
 			name: "test case 3 - no size",
@@ -521,7 +521,7 @@ func TestTranslateDropletCreateRequest(t *testing.T) {
 				VPCUUID: "abcd",
 			},
 			expDropletCreateRequest: &godo.DropletCreateRequest{},
-			expError:                errors.New("droplet size not specified"),
+			expError:                errors.New(dropletSizeErr),
 		},
 		{
 			name: "test case 3 - no error",

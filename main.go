@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"log"
 
 	"github.com/nolancon/gitdrops/pkg/reconcile"
 )
@@ -9,12 +10,12 @@ import (
 func main() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	reconcileDroplets, err := reconcile.NewReconciler(ctx)
+	reconcileObjects, err := reconcile.NewReconciler(ctx)
 	if err != nil {
-		return
+		log.Fatalf("failed to create new Reconciler %v", err)
 	}
-	err = reconcileDroplets.Reconcile(ctx)
+	err = reconcileObjects.Reconcile(ctx)
 	if err != nil {
-		return
+		log.Fatalf("failed to Reconcile %v", err)
 	}
 }
