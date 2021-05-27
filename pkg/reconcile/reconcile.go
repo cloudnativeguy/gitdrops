@@ -2,10 +2,12 @@ package reconcile
 
 import (
 	"context"
-	"github.com/nolancon/gitdrops/pkg/gitdrops"
+	"fmt"
 	"log"
 	"os"
 	"time"
+
+	"github.com/nolancon/gitdrops/pkg/gitdrops"
 
 	"github.com/digitalocean/godo"
 )
@@ -19,7 +21,7 @@ const (
 )
 
 type objectReconciler interface {
-	reconcile(context.Context)
+	reconcile(context.Context) error
 	secondaryReconcile(context.Context, actionsByID) error
 	setActiveObjects(context.Context) error
 	setObjectsToUpdateAndCreate()
@@ -50,7 +52,7 @@ func NewReconciler(ctx context.Context) (Reconciler, error) {
 	gitDrops, err := gitdrops.ReadGitDrops()
 	if err != nil {
 		log.Println(err)
-		return Reconciler{}, err
+		return Reconciler{}, fmt.Errorf("NewReconciler: %v", err)
 	}
 
 	client := godo.NewFromToken(os.Getenv(digitaloceanToken))
@@ -63,7 +65,7 @@ func NewReconciler(ctx context.Context) (Reconciler, error) {
 
 	err = volumeReconciler.setActiveObjects(ctx)
 	if err != nil {
-		return Reconciler{}, err
+		return Reconciler{}, fmt.Errorf("NewReconciler: %v", err)
 	}
 	volumeReconciler.setObjectsToUpdateAndCreate()
 	volumeReconciler.setObjectsToDelete()
@@ -79,7 +81,7 @@ func NewReconciler(ctx context.Context) (Reconciler, error) {
 	}
 	err = dropletReconciler.setActiveObjects(ctx)
 	if err != nil {
-		return Reconciler{}, err
+		return Reconciler{}, fmt.Errorf("NewReconciler: %v", err)
 	}
 
 	dropletReconciler.setObjectsToUpdateAndCreate()
@@ -97,7 +99,10 @@ func NewReconciler(ctx context.Context) (Reconciler, error) {
 
 func (r *Reconciler) Reconcile(ctx context.Context) error {
 	log.Println("begin initial volume reconciliation(create, resize)...")
-	r.volumeReconciler.reconcile(ctx)
+	err := r.volumeReconciler.reconcile(ctx)
+	if err != nil {
+		return fmt.Errorf("Reconcile: %v", err)
+	}
 	log.Println("initial volume reconciliation complete")
 
 	// wait 10 seconds to allow any volume creation before droplet creation,
@@ -107,12 +112,15 @@ func (r *Reconciler) Reconcile(ctx context.Context) error {
 
 	// re-set active objects in the droplet reconciler because the volumes have been
 	// reconciled and we need to search again for volume attach/detach actions.
-	err := r.dropletReconciler.setActiveObjects(ctx)
+	err = r.dropletReconciler.setActiveObjects(ctx)
 	if err != nil {
-		return err
+		return fmt.Errorf("Reconcile: %v", err)
 	}
 	log.Println("begin droplet reconciliation(create, delete, resize, rebuild)...")
-	r.dropletReconciler.reconcile(ctx)
+	err = r.dropletReconciler.reconcile(ctx)
+	if err != nil {
+		return fmt.Errorf("Reconcile: %v", err)
+	}
 	log.Println("droplet reconciliation complete")
 	log.Println("begin secondary volume reconciliation (delete, attach, detach)...")
 
@@ -123,7 +131,7 @@ func (r *Reconciler) Reconcile(ctx context.Context) error {
 	objectsToUpdate := r.dropletReconciler.getObjectsToUpdate()
 	err = r.volumeReconciler.secondaryReconcile(ctx, objectsToUpdate)
 	if err != nil {
-		return err
+		return fmt.Errorf("Reconcile: %v", err)
 	}
 	log.Println("secondary volume reconciliation complete")
 	return nil

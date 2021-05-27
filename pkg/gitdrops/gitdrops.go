@@ -2,10 +2,12 @@ package gitdrops
 
 import (
 	"context"
-	"github.com/digitalocean/godo"
+	"fmt"
 	"io/ioutil"
 	"log"
 	"time"
+
+	"github.com/digitalocean/godo"
 
 	"gopkg.in/yaml.v2"
 )
@@ -15,8 +17,12 @@ const (
 	retries          = 10
 	resize           = "resize"
 	rebuild          = "rebuild"
-	timeout          = 3 * time.Second
+	delay            = 3 * time.Second
 )
+
+func timeout() {
+	time.Sleep(delay)
+}
 
 // ReadGitDrops reads and unmarshals from gitdrops.yaml
 func ReadGitDrops() (GitDrops, error) {
@@ -24,12 +30,12 @@ func ReadGitDrops() (GitDrops, error) {
 
 	gitdropsYaml, err := ioutil.ReadFile(gitdropsYamlPath)
 	if err != nil {
-		return gitDrops, err
+		return gitDrops, fmt.Errorf("ReadGitDrops: %v", err)
 	}
 
 	err = yaml.Unmarshal(gitdropsYaml, &gitDrops)
 	if err != nil {
-		return gitDrops, err
+		return gitDrops, fmt.Errorf("ReadGitDrops: %v", err)
 	}
 	for i, droplet := range gitDrops.Droplets {
 		if droplet.UserData.Path == "" {
@@ -37,7 +43,7 @@ func ReadGitDrops() (GitDrops, error) {
 		}
 		userData, err := ioutil.ReadFile(droplet.UserData.Path)
 		if err != nil {
-			return gitDrops, err
+			return gitDrops, fmt.Errorf("ReadGitDrops: %v", err)
 		}
 		gitDrops.Droplets[i].UserData.Data = string(userData)
 	}
@@ -58,11 +64,10 @@ func ListDroplets(ctx context.Context, client *godo.Client) ([]godo.Droplet, err
 		for i := 0; i < retries; i++ {
 			dropletsTmp, respTmp, err := client.Droplets.List(ctx, opt)
 			if err != nil {
-				log.Println("error listing droplets", err)
 				if i == retries-1 {
-					return list, err
+					return list, fmt.Errorf("ListDroplets: %v", err)
 				}
-				time.Sleep(timeout)
+				timeout()
 			} else {
 				droplets = dropletsTmp
 				resp = respTmp
@@ -79,7 +84,7 @@ func ListDroplets(ctx context.Context, client *godo.Client) ([]godo.Droplet, err
 
 		page, err := resp.Links.CurrentPage()
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("ListDroplets: %v", err)
 		}
 
 		// set the page we want for the next request
@@ -94,13 +99,12 @@ func DeleteDroplet(ctx context.Context, client *godo.Client, id int) error {
 	for i := 0; i < retries; i++ {
 		response, err := client.Droplets.Delete(ctx, id)
 		if err != nil {
-			log.Println("error during delete request for droplet ", id, " error: ", err)
 			if i == retries-1 {
-				return err
+				return fmt.Errorf("DeleteDroplet: %v", err)
 			}
-			time.Sleep(timeout)
+			timeout()
 		} else {
-			log.Println("delete request for droplet ", id, " returned: ", response.StatusCode)
+			log.Println("delete request for droplet", id, "returned:", response.StatusCode)
 			break
 		}
 	}
@@ -112,13 +116,12 @@ func CreateDroplet(ctx context.Context, client *godo.Client, dropletCreateReques
 	for i := 0; i < retries; i++ {
 		_, response, err := client.Droplets.Create(ctx, dropletCreateRequest)
 		if err != nil {
-			log.Println("error creating droplet", dropletCreateRequest.Name, err)
 			if i == retries-1 {
-				return err
+				return fmt.Errorf("CreateDroplets: %v", err)
 			}
-			time.Sleep(timeout)
+			timeout()
 		} else {
-			log.Println("create request for ", dropletCreateRequest.Name, "returned ", response.Status)
+			log.Println("create request for", dropletCreateRequest.Name, "returned", response.Status)
 			break
 		}
 	}
@@ -132,13 +135,12 @@ func UpdateDroplet(ctx context.Context, client *godo.Client, id int, action, val
 		for i := 0; i < retries; i++ {
 			_, response, err := client.DropletActions.Resize(ctx, id, value, true)
 			if err != nil {
-				log.Println("error resizing droplet ", id)
 				if i == retries-1 {
-					return err
+					return fmt.Errorf("UpdateDroplets (resize): %v", err)
 				}
-				time.Sleep(timeout)
+				timeout()
 			} else {
-				log.Println("droplet action request for resize ", id, "returned ", response.Status)
+				log.Println("droplet action request for resize", id, "returned", response.Status)
 				break
 			}
 		}
@@ -146,13 +148,12 @@ func UpdateDroplet(ctx context.Context, client *godo.Client, id int, action, val
 		for i := 0; i < retries; i++ {
 			_, response, err := client.DropletActions.RebuildByImageSlug(ctx, id, value)
 			if err != nil {
-				log.Println("error resizing droplet ", id)
 				if i == retries-1 {
-					return err
+					return fmt.Errorf("UpdateDroplets (rebuild): %v", err)
 				}
-				time.Sleep(timeout)
+				timeout()
 			} else {
-				log.Println("droplet action request for rebuild ", id, "returned ", response.Status)
+				log.Println("droplet action request for rebuild", id, "returned", response.Status)
 				break
 			}
 		}
@@ -173,11 +174,10 @@ func ListVolumes(ctx context.Context, client *godo.Client) ([]godo.Volume, error
 		for i := 0; i < retries; i++ {
 			volumesTmp, respTmp, err := client.Storage.ListVolumes(ctx, opt)
 			if err != nil {
-				log.Println("error listing volumes", err)
 				if i == retries-1 {
-					return list, err
+					return list, fmt.Errorf("ListVolumes: %v", err)
 				}
-				time.Sleep(timeout)
+				timeout()
 			} else {
 				volumes = volumesTmp
 				resp = respTmp
@@ -194,7 +194,7 @@ func ListVolumes(ctx context.Context, client *godo.Client) ([]godo.Volume, error
 
 		page, err := resp.Links.CurrentPage()
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("ListVolumes: %v", err)
 		}
 
 		// set the page we want for the next request
@@ -209,13 +209,12 @@ func DeleteVolume(ctx context.Context, client *godo.Client, id string) error {
 	for i := 0; i < retries; i++ {
 		response, err := client.Storage.DeleteVolume(ctx, id)
 		if err != nil {
-			log.Println("error during delete request for volume ", id, " error: ", err)
 			if i == retries-1 {
-				return err
+				return fmt.Errorf("DeleteVolumes: %v", err)
 			}
-			time.Sleep(timeout)
+			timeout()
 		} else {
-			log.Println("delete request for volume ", id, " returned: ", response.StatusCode)
+			log.Println("delete request for", id, "returned", response.Status)
 			break
 		}
 	}
@@ -227,13 +226,13 @@ func CreateVolume(ctx context.Context, client *godo.Client, volumeCreateRequest 
 	for i := 0; i < retries; i++ {
 		_, response, err := client.Storage.CreateVolume(ctx, volumeCreateRequest)
 		if err != nil {
-			log.Println("error creating volume ", volumeCreateRequest.Name)
 			if i == retries-1 {
-				return err
+				return fmt.Errorf("CreateVolumes: %v", err)
+
 			}
-			time.Sleep(timeout)
+			timeout()
 		} else {
-			log.Println("create request for ", volumeCreateRequest.Name, "returned ", response.Status)
+			log.Println("create request for", volumeCreateRequest.Name, "returned", response.Status)
 			break
 		}
 	}
@@ -245,13 +244,12 @@ func AttachVolume(ctx context.Context, client *godo.Client, volID string, drople
 	for i := 0; i < retries; i++ {
 		_, response, err := client.StorageActions.Attach(ctx, volID, dropletID)
 		if err != nil {
-			log.Println("error attaching volume ", volID, " to droplet ", dropletID)
 			if i == retries-1 {
-				return err
+				return fmt.Errorf("AttachVolume: %v", err)
 			}
-			time.Sleep(timeout)
+			timeout()
 		} else {
-			log.Println("volume action request for attachment ", volID, "returned ", response.Status)
+			log.Println("volume action request for attachment", volID, "returned", response.Status)
 			break
 		}
 	}
@@ -263,13 +261,12 @@ func DetachVolume(ctx context.Context, client *godo.Client, volID string, drople
 	for i := 0; i < retries; i++ {
 		_, response, err := client.StorageActions.DetachByDropletID(ctx, volID, dropletID)
 		if err != nil {
-			log.Println("error detaching volume ", volID)
 			if i == retries-1 {
-				return err
+				return fmt.Errorf("DetachVolume: %v", err)
 			}
-			time.Sleep(timeout)
+			timeout()
 		} else {
-			log.Println("volume action request for detachment ", volID, "returned ", response.Status)
+			log.Println("volume action request for detachment", volID, "returned", response.Status)
 			break
 		}
 	}
@@ -281,13 +278,12 @@ func ResizeVolume(ctx context.Context, client *godo.Client, volID, region string
 	for i := 0; i < retries; i++ {
 		_, response, err := client.StorageActions.Resize(ctx, volID, value.(int), region)
 		if err != nil {
-			log.Println("error resizing volume ", volID)
 			if i == retries-1 {
-				return err
+				return fmt.Errorf("ResizeVolume: %v", err)
 			}
-			time.Sleep(timeout)
+			timeout()
 		} else {
-			log.Println("volume action request for resize ", volID, "returned ", response.Status)
+			log.Println("volume action request for resize", volID, "returned", response.Status)
 			break
 		}
 	}

@@ -2,9 +2,10 @@ package reconcile
 
 import (
 	"errors"
-	"github.com/nolancon/gitdrops/pkg/gitdrops"
 	"reflect"
 	"testing"
+
+	"github.com/nolancon/gitdrops/pkg/gitdrops"
 
 	"github.com/digitalocean/godo"
 )
@@ -327,7 +328,7 @@ func TestTranslateVolumesCreateRequest(t *testing.T) {
 				SizeGigaBytes: 200,
 			},
 			expVolumeCreateRequest: &godo.VolumeCreateRequest{},
-			expError:               errors.New("volume name not specified"),
+			expError:               errors.New(volumeNameErr),
 		},
 		{
 			name: "test case 2 - no region",
@@ -337,7 +338,7 @@ func TestTranslateVolumesCreateRequest(t *testing.T) {
 				SnapshotID:    "test-id",
 			},
 			expVolumeCreateRequest: &godo.VolumeCreateRequest{},
-			expError:               errors.New("volume region not specified"),
+			expError:               errors.New(volumeRegionErr),
 		},
 		{
 			name: "test case 3 - no size",
@@ -346,7 +347,7 @@ func TestTranslateVolumesCreateRequest(t *testing.T) {
 				Region: "nyc3",
 			},
 			expVolumeCreateRequest: &godo.VolumeCreateRequest{},
-			expError:               errors.New("volume sizeGigaBytes not specified"),
+			expError:               errors.New(volumeSizeGigaBytesErr),
 		},
 		{
 			name: "test case 3 - no error",

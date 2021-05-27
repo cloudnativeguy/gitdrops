@@ -3,11 +3,19 @@ package reconcile
 import (
 	"context"
 	"errors"
+	"fmt"
 	"log"
 
 	"github.com/nolancon/gitdrops/pkg/gitdrops"
 
 	"github.com/digitalocean/godo"
+)
+
+const (
+	dropletNameErr   = "dropletReconciler.translateDropletCreateRequest: droplet name not specified"
+	dropletRegionErr = "dropletReconciler.translateDropletCreateRequest: droplet region not specified"
+	dropletSizeErr   = "dropletReconciler.translateDropletCreateRequest: droplet size not specified"
+	dropletImageErr  = "dropletReconciler.translateDropletCreateRequest: droplet image not specified"
 )
 
 type dropletReconciler struct {
@@ -26,16 +34,14 @@ var _ objectReconciler = &dropletReconciler{}
 func (dr *dropletReconciler) setActiveObjects(ctx context.Context) error {
 	activeDroplets, err := gitdrops.ListDroplets(ctx, dr.client)
 	if err != nil {
-		log.Println("Error while listing droplets", err)
-		return err
+		return fmt.Errorf("dropletReconciler.setActiveObjects: %v", err)
 	}
 	dr.activeDroplets = activeDroplets
 	log.Println("active droplets:", len(activeDroplets))
 
 	activeVolumes, err := gitdrops.ListVolumes(ctx, dr.client)
 	if err != nil {
-		log.Println("Error while listing volumes", err)
-		return err
+		return fmt.Errorf("dropletReconciler.setActiveObjects: %v", err)
 	}
 
 	volumeNameToID := make(map[string]string)
@@ -47,37 +53,38 @@ func (dr *dropletReconciler) setActiveObjects(ctx context.Context) error {
 	return nil
 }
 
-func (dr *dropletReconciler) reconcile(ctx context.Context) {
+func (dr *dropletReconciler) reconcile(ctx context.Context) error {
 	if len(dr.dropletsToDelete) != 0 {
 		if dr.privileges.Delete {
 			err := dr.deleteObjects(ctx)
 			if err != nil {
-				log.Println("error deleting droplet", err)
+				return fmt.Errorf("dropletReconciler.reconcile: %v", err)
 			}
 		} else {
-			log.Println("gitdrops.yaml does not have delete privileges")
+			log.Println("gitdrops has discovered droplets to delete, but does not have delete privileges")
 		}
 	}
 	if len(dr.dropletsToCreate) != 0 {
 		if dr.privileges.Create {
 			err := dr.createObjects(ctx)
 			if err != nil {
-				log.Println("error creating droplet", err)
+				return fmt.Errorf("dropletReconciler.reconcile: %v", err)
 			}
 		} else {
-			log.Println("gitdrops.yaml does not have create privileges")
+			log.Println("gitdrops has discovered droplets to create, but does not have create privileges")
 		}
 	}
 	if len(dr.dropletsToUpdate) != 0 {
 		if dr.privileges.Update {
 			err := dr.updateObjects(ctx)
 			if err != nil {
-				log.Println("error updating droplet", err)
+				return fmt.Errorf("dropletReconciler.reconcile: %v", err)
 			}
 		} else {
-			log.Println("gitdrops.yaml does not have update privileges")
+			log.Println("gitdrops has discovered droplets to update, but does not have update privileges")
 		}
 	}
+	return nil
 }
 
 func (dr *dropletReconciler) secondaryReconcile(context.Context, actionsByID) error {
@@ -87,16 +94,16 @@ func (dr *dropletReconciler) secondaryReconcile(context.Context, actionsByID) er
 func (dr *dropletReconciler) translateDropletCreateRequest(gitdropsDroplet gitdrops.Droplet) (*godo.DropletCreateRequest, error) {
 	createRequest := &godo.DropletCreateRequest{}
 	if gitdropsDroplet.Name == "" {
-		return createRequest, errors.New("droplet name not specified")
+		return createRequest, errors.New(dropletNameErr)
 	}
 	if gitdropsDroplet.Region == "" {
-		return createRequest, errors.New("droplet region not specified")
+		return createRequest, errors.New(dropletRegionErr)
 	}
 	if gitdropsDroplet.Size == "" {
-		return createRequest, errors.New("droplet size not specified")
+		return createRequest, errors.New(dropletSizeErr)
 	}
 	if gitdropsDroplet.Image == "" {
-		return createRequest, errors.New("droplet image not specified")
+		return createRequest, errors.New(dropletImageErr)
 	}
 	createRequest.Name = gitdropsDroplet.Name
 	createRequest.Region = gitdropsDroplet.Region
@@ -158,8 +165,6 @@ func (dr *dropletReconciler) setObjectsToUpdateAndCreate() {
 			}
 		}
 		if !dropletIsActive {
-			//create droplet from local request
-			log.Println("droplet not active, create droplet ", gitdropsDroplet)
 			dropletsToCreate = append(dropletsToCreate, gitdropsDroplet)
 		}
 	}
@@ -192,8 +197,7 @@ func (dr *dropletReconciler) setObjectsToDelete() {
 func getDropletActions(gitdropsDroplet gitdrops.Droplet, activeDroplet godo.Droplet) []action {
 	var dropletActions []action
 	if activeDroplet.Size != nil && activeDroplet.Size.Slug != gitdropsDroplet.Size {
-		log.Println("droplet", activeDroplet.Name, " size has been updated in gitdrops.yaml")
-
+		log.Println("droplet", activeDroplet.Name, "size has been updated in gitdrops.yaml")
 		dropletAction := action{
 			action: resize,
 			value:  gitdropsDroplet.Size,
@@ -201,7 +205,7 @@ func getDropletActions(gitdropsDroplet gitdrops.Droplet, activeDroplet godo.Drop
 		dropletActions = append(dropletActions, dropletAction)
 	}
 	if activeDroplet.Image != nil && activeDroplet.Image.Slug != gitdropsDroplet.Image {
-		log.Println("droplet", activeDroplet.Name, "image  has been updated in gitdrops.yaml")
+		log.Println("droplet", activeDroplet.Name, "image has been updated in gitdrops.yaml")
 		dropletAction := action{
 			action: rebuild,
 			value:  gitdropsDroplet.Image,
@@ -267,8 +271,7 @@ func (dr *dropletReconciler) deleteObjects(ctx context.Context) error {
 	for _, id := range dr.dropletsToDelete {
 		err := gitdrops.DeleteDroplet(ctx, dr.client, id)
 		if err != nil {
-			log.Println("error during delete request for droplet ", id, " error: ", err)
-			return err
+			return fmt.Errorf("dropletReconciler.deleteObjects: %v", err)
 		}
 	}
 	return nil
@@ -278,13 +281,12 @@ func (dr *dropletReconciler) createObjects(ctx context.Context) error {
 	for _, dropletToCreate := range dr.dropletsToCreate {
 		dropletCreateRequest, err := dr.translateDropletCreateRequest(dropletToCreate)
 		if err != nil {
-			log.Println("error converting gitdrops.yaml to droplet create request:")
-			return err
+			return fmt.Errorf("dropletReconciler.createObjects: %v", err)
 		}
 		err = gitdrops.CreateDroplet(ctx, dr.client, dropletCreateRequest)
 		if err != nil {
-			log.Println("error creating droplet ", dropletToCreate.Name)
-			return err
+			return fmt.Errorf("dropletReconciler.createObjects: %v", err)
+
 		}
 	}
 	return nil
@@ -295,9 +297,7 @@ func (dr *dropletReconciler) updateObjects(ctx context.Context) error {
 		for _, dropletAction := range dropletActions {
 			err := gitdrops.UpdateDroplet(ctx, dr.client, id.(int), dropletAction.action, dropletAction.value.(string))
 			if err != nil {
-				log.Println("error during action request for droplet ", id, " error: ", err)
-				// we do not return here as there may be more actions to complete
-				// for this droplet.
+				return fmt.Errorf("dropletReconciler.updateObjects: %v", err)
 			}
 		}
 	}
