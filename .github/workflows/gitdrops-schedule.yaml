@@ -14,16 +14,8 @@ jobs:
         persist-credentials: false # otherwise, the token used is the GITHUB_TOKEN, instead of your personal token
         fetch-depth: 0 # otherwise, you will failed to push refs to dest repo
 
-    - name: Create local changes
-      run: |
-        cp -f gitdrops-update.yaml gitdrops.yaml 
-
-    - name: Commit files
-      run: |
-        git config --local user.email "41898282+github-actions[bot]@users.noreply.github.com"
-        git config --local user.name "github-actions[bot]"
-        git add gitdrops.yaml
-        git commit -m "Copy gitdrops-update.yaml to gitdrops.yaml" -a
+    - name: Create local changes and commit
+      run: ./commit.sh 
 
     - name: Push changes
       uses: ad-m/github-push-action@master
