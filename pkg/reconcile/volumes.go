@@ -29,9 +29,10 @@ type volumeReconciler struct {
 
 var _ objectReconciler = &volumeReconciler{}
 
-func (vr *volumeReconciler) reconcile(ctx context.Context) error {
+func (vr *volumeReconciler) reconcileObjectsToCreate(ctx context.Context) error {
 	if len(vr.volumesToCreate) != 0 {
 		if vr.privileges.Create {
+			log.Println("volumeReconciler.reconcileObjectsToCreate: create volumes", vr.volumesToCreate)
 			err := vr.createObjects(ctx)
 			if err != nil {
 				return fmt.Errorf("volumeReconciler.reconcile: %v", err)
@@ -40,8 +41,16 @@ func (vr *volumeReconciler) reconcile(ctx context.Context) error {
 			log.Println("gitdrops discovered volumes to create, but does not have create privileges")
 		}
 	}
+	return nil
+}
+
+func (vr *volumeReconciler) reconcileObjectsToUpdate(ctx context.Context, outsideActions actionsByID) error {
 	if len(vr.volumesToUpdate) != 0 {
+		if len(outsideActions) != 0 {
+			vr.volumesToUpdate = outsideActions
+		}
 		if vr.privileges.Update {
+			log.Println("volumeReconciler.reconcileObjectsToUpdate: update volumes", vr.volumesToUpdate)
 			err := vr.updateObjects(ctx)
 			if err != nil {
 				return fmt.Errorf("volumeReconciler.reconcile: %v", err)
@@ -53,18 +62,10 @@ func (vr *volumeReconciler) reconcile(ctx context.Context) error {
 	return nil
 }
 
-func (vr *volumeReconciler) setActiveObjects(ctx context.Context) error {
-	activeVolumes, err := gitdrops.ListVolumes(ctx, vr.client)
-	if err != nil {
-		return fmt.Errorf("volumeReconciler.setActiveObjects: %v", err)
-	}
-	vr.activeVolumes = activeVolumes
-	return nil
-}
-
-func (vr *volumeReconciler) secondaryReconcile(ctx context.Context, objectsToUpdate actionsByID) error {
+func (vr *volumeReconciler) reconcileObjectsToDelete(ctx context.Context) error {
 	if len(vr.volumesToDelete) != 0 {
 		if vr.privileges.Delete {
+			log.Println("volumeReconciler.reconcileObjectsToDelete: delete volumes", vr.volumesToDelete)
 			err := vr.deleteObjects(ctx)
 			if err != nil {
 				return fmt.Errorf("volumeReconciler.secondaryReconcile: %v", err)
@@ -73,43 +74,17 @@ func (vr *volumeReconciler) secondaryReconcile(ctx context.Context, objectsToUpd
 			log.Println("gitdrops discovered volumes to delete, but does not have delete privileges")
 		}
 	}
-	err := vr.setActiveObjects(ctx)
-	if err != nil {
-		return fmt.Errorf("volumeReconciler.secondaryReconcile: %v", err)
-	}
-
-	vr.volumesToUpdate = objectsToUpdate
-	err = vr.updateObjects(ctx)
-	if err != nil {
-		return fmt.Errorf("volumeReconciler.secondaryReconcile: %v", err)
-	}
-
 	return nil
 }
 
-func translateVolumeCreateRequest(gitdropsVolume gitdrops.Volume) (*godo.VolumeCreateRequest, error) {
-	createRequest := &godo.VolumeCreateRequest{}
-	if gitdropsVolume.Name == "" {
-		return createRequest, errors.New(volumeNameErr)
+func (vr *volumeReconciler) setActiveObjects(ctx context.Context) error {
+	activeVolumes, err := gitdrops.ListVolumes(ctx, vr.client)
+	if err != nil {
+		return fmt.Errorf("volumeReconciler.setActiveObjects: %v", err)
 	}
-	if gitdropsVolume.Region == "" {
-		return createRequest, errors.New(volumeRegionErr)
-	}
-	if gitdropsVolume.SizeGigaBytes == 0 {
-		return createRequest, errors.New(volumeSizeGigaBytesErr)
-	}
-	createRequest.Name = gitdropsVolume.Name
-	createRequest.Region = gitdropsVolume.Region
-	createRequest.SizeGigaBytes = gitdropsVolume.SizeGigaBytes
-	createRequest.SnapshotID = gitdropsVolume.SnapshotID
-	createRequest.FilesystemType = gitdropsVolume.FilesystemType
-	createRequest.FilesystemLabel = gitdropsVolume.FilesystemLabel
-
-	if gitdropsVolume.Tags != nil {
-		createRequest.Tags = gitdropsVolume.Tags
-	}
-
-	return createRequest, nil
+	vr.activeVolumes = activeVolumes
+	log.Println("volumeReconciler.setActiveObjects: active volumes", len(vr.activeVolumes))
+	return nil
 }
 
 // SetObjectsToUpdateCreate populates VolumeReconciler with two lists:
@@ -140,6 +115,8 @@ func (vr *volumeReconciler) setObjectsToUpdateAndCreate() {
 	}
 	vr.volumesToUpdate = volumeActionsByID
 	vr.volumesToCreate = volumesToCreate
+	log.Println("volumeReconciler.setObjectsToUpdateAndCreate: volumes to create", vr.volumesToCreate)
+	log.Println("volumeReconciler.setObjectsToUpdateAndCreate: volumes to update", vr.volumesToUpdate)
 }
 
 // SetObjectToDelete populates VolumeReconciler with  a list of IDs for volumes that need
@@ -162,16 +139,29 @@ func (vr *volumeReconciler) setObjectsToDelete() {
 		}
 	}
 	vr.volumesToDelete = volumesToDelete
+	log.Println("volumeReconciler.setObjectsToDelete: objects to delete", vr.volumesToDelete)
+}
+
+func (vr *volumeReconciler) getActiveObjects() interface{} {
+	return vr.activeVolumes
+}
+
+func (vr *volumeReconciler) getObjectsToCreate() interface{} {
+	return vr.volumesToCreate
 }
 
 func (vr *volumeReconciler) getObjectsToUpdate() actionsByID {
 	return vr.volumesToUpdate
 }
 
+func (vr *volumeReconciler) getObjectsToDelete() interface{} {
+	return vr.volumesToDelete
+}
+
 func getVolumeActions(gitdropsVolume gitdrops.Volume, activeVolume godo.Volume) []action {
 	var volumeActions []action
 	if activeVolume.SizeGigaBytes != 0 && activeVolume.SizeGigaBytes != gitdropsVolume.SizeGigaBytes {
-		log.Println("volume", activeVolume.Name, "size has been updated in gitdrops.yaml")
+		log.Println("getVolumeActions: volume", activeVolume.Name, "size has been updated in gitdrops.yaml")
 		volumeAction := action{
 			action: resize,
 			value:  gitdropsVolume.SizeGigaBytes,
@@ -243,4 +233,29 @@ func (vr *volumeReconciler) findVolumeRegion(volID string) string {
 		}
 	}
 	return ""
+}
+
+func translateVolumeCreateRequest(gitdropsVolume gitdrops.Volume) (*godo.VolumeCreateRequest, error) {
+	createRequest := &godo.VolumeCreateRequest{}
+	if gitdropsVolume.Name == "" {
+		return createRequest, errors.New(volumeNameErr)
+	}
+	if gitdropsVolume.Region == "" {
+		return createRequest, errors.New(volumeRegionErr)
+	}
+	if gitdropsVolume.SizeGigaBytes == 0 {
+		return createRequest, errors.New(volumeSizeGigaBytesErr)
+	}
+	createRequest.Name = gitdropsVolume.Name
+	createRequest.Region = gitdropsVolume.Region
+	createRequest.SizeGigaBytes = gitdropsVolume.SizeGigaBytes
+	createRequest.SnapshotID = gitdropsVolume.SnapshotID
+	createRequest.FilesystemType = gitdropsVolume.FilesystemType
+	createRequest.FilesystemLabel = gitdropsVolume.FilesystemLabel
+
+	if gitdropsVolume.Tags != nil {
+		createRequest.Tags = gitdropsVolume.Tags
+	}
+
+	return createRequest, nil
 }
