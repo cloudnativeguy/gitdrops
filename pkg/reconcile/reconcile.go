@@ -98,8 +98,6 @@ func (r *Reconciler) Reconcile(ctx context.Context) error {
 	log.Println("Reconcile: waiting for volumes to update before reconciling droplets (10s)...")
 	time.Sleep(10 * time.Second)
 
-	// re-set active objects in the droplet reconciler because the volumes have been
-	// reconciled and we need to search again for volume attach/detach actions.
 	err = r.dropletReconciler.setActiveObjects(ctx)
 	if err != nil {
 		return fmt.Errorf("Reconcile: %v", err)
@@ -120,14 +118,15 @@ func (r *Reconciler) Reconcile(ctx context.Context) error {
 		return fmt.Errorf("Reconcile: %v", err)
 	}
 
-	// pass objects to update from droplet reconciler to volume reconciler
-	// as they now contain actions for volumes to attac/detach from droplets
-	// based on droplet reconciliation
+	// reset active objects in the volume reconciler as new volumes may have been created during
+	// initial volume reconciliation and we need to search again for volume attach/detach actions.
 	err = r.volumeReconciler.setActiveObjects(ctx)
 	if err != nil {
 		return fmt.Errorf("Reconcile: %v", err)
 	}
 	objectsToUpdate := r.dropletReconciler.getObjectsToUpdate()
+	// pass objects to update from droplet reconciler to volume reconciler as they now contain
+	// actions for volumes to attach/detach from droplets based on droplet reconciliation
 	err = r.volumeReconciler.reconcileObjectsToUpdate(ctx, objectsToUpdate)
 	if err != nil {
 		return fmt.Errorf("Reconcile: %v", err)
